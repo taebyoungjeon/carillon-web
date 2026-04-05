@@ -31,6 +31,7 @@ export default function Nav() {
             { href: "#problems", label: "고객 과제" },
             { href: "#services", label: "서비스" },
             { href: "#testimonials", label: "고객 사례" },
+            { href: "/blog", label: "블로그" },
           ].map((item) => (
             <a
               key={item.href}
