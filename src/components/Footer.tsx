@@ -29,10 +29,10 @@ export default function Footer() {
         </a>
         <span className="hidden sm:block text-white/10">|</span>
         <a
-          href="mailto:contact@carillon.kr"
+          href="mailto:tbj@carillon.kr"
           className="text-[12px] text-white/30 hover:text-gold transition-colors tracking-wide"
         >
-          contact@carillon.kr
+          tbj@carillon.kr
         </a>
       </div>
 
