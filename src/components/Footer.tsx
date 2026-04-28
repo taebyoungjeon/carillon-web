@@ -22,10 +22,10 @@ export default function Footer() {
       {/* 연락처 */}
       <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6 mb-8">
         <a
-          href="tel:1600-xxxx"
+          href="tel:042-863-4035"
           className="text-[12px] text-white/30 hover:text-gold transition-colors tracking-wide"
         >
-          Tel. 1600-XXXX
+          Tel. 042-863-4035
         </a>
         <span className="hidden sm:block text-white/10">|</span>
         <a
