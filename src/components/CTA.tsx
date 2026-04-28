@@ -29,14 +29,14 @@ export default function CTA() {
         {/* buttons */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
           <a
-            href="mailto:contact@carillion.co.kr"
+            href="mailto:tbj@carillon.kr"
             className="inline-flex items-center justify-center gap-2 bg-ink text-white text-[13px] font-semibold tracking-widest uppercase px-9 py-4 rounded hover:bg-gold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(0,0,0,0.15)] group"
           >
             무료 상담 신청하기
             <span className="transition-transform duration-200 group-hover:translate-x-1">→</span>
           </a>
           <a
-            href="mailto:contact@carillion.co.kr"
+            href="mailto:tbj@carillon.kr"
             className="inline-flex items-center justify-center gap-2 border border-gold/40 text-gold text-[13px] font-semibold tracking-widest uppercase px-9 py-4 rounded hover:bg-gold hover:text-white transition-all duration-300 hover:-translate-y-0.5"
           >
             이메일 문의
@@ -46,12 +46,12 @@ export default function CTA() {
         {/* contact */}
         <p className="text-[13px] text-stone-400">
           전화 상담:&nbsp;
-          <a href="tel:1600XXXX" className="text-ink border-b border-ink/20 hover:text-gold hover:border-gold transition-colors">
-            1600-XXXX
+          <a href="tel:042-863-4035" className="text-ink border-b border-ink/20 hover:text-gold hover:border-gold transition-colors">
+            042-863-4035
           </a>
           &nbsp;&nbsp;|&nbsp;&nbsp;이메일:&nbsp;
-          <a href="mailto:contact@carillion.co.kr" className="text-ink border-b border-ink/20 hover:text-gold hover:border-gold transition-colors">
-            contact@carillion.co.kr
+          <a href="mailto:tbj@carillon.kr" className="text-ink border-b border-ink/20 hover:text-gold hover:border-gold transition-colors">
+            tbj@carillon.kr
           </a>
         </p>
       </div>
