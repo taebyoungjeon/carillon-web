@@ -19,7 +19,7 @@ export default function Nav() {
     >
       <div className="max-w-6xl mx-auto flex items-center justify-between px-6 md:px-10 py-4">
         {/* Wordmark */}
-        <Link href="#hero">
+        <Link href="/#hero">
           <span className="font-serif text-[18px] font-extrabold tracking-[0.25em] text-ink hover:text-gold transition-colors duration-200 uppercase">
             CARILLON
           </span>
@@ -28,9 +28,9 @@ export default function Nav() {
         {/* Desktop links */}
         <div className="hidden md:flex items-center gap-8">
           {[
-            { href: "#problems", label: "고객 과제" },
-            { href: "#services", label: "서비스" },
-            { href: "#testimonials", label: "고객 사례" },
+            { href: "/#problems", label: "고객 과제" },
+            { href: "/#services", label: "서비스" },
+            { href: "/#testimonials", label: "고객 사례" },
             { href: "/blog", label: "블로그" },
           ].map((item) => (
             <a
@@ -42,7 +42,7 @@ export default function Nav() {
             </a>
           ))}
           <a
-            href="#cta"
+            href="/#cta"
             className="text-[12px] font-semibold tracking-widest uppercase bg-ink text-white px-5 py-2.5 rounded hover:bg-gold transition-colors duration-200"
           >
             상담 신청
@@ -51,7 +51,7 @@ export default function Nav() {
 
         {/* Mobile CTA */}
         <a
-          href="#cta"
+          href="/#cta"
           className="md:hidden text-[12px] font-semibold tracking-widest uppercase bg-ink text-white px-4 py-2 rounded hover:bg-gold transition-colors"
         >
           상담
