@@ -283,6 +283,11 @@
           <label for="leadMemo">문의/상담 메모</label>
           <textarea id="leadMemo" placeholder="고객 요구사항, 상담 희망 여부, 현장 특이사항"></textarea>
         </div>
+        <div class="field">
+          <label for="requestPayload">고객 요청 JSON 불러오기</label>
+          <textarea id="requestPayload" placeholder="상세견적 문의 이메일의 quote_payload 값을 붙여넣으면 조건이 자동 반영됩니다."></textarea>
+        </div>
+        <button class="btn primary" id="loadRequest" type="button">고객 요청 불러오기</button>
       </section>
 
       <section>
@@ -296,6 +301,9 @@
           <div class="field"><label for="length">길이 m</label><input id="length" type="number" step="1" value="97"></div>
           <div class="field"><label for="side">측고 m</label><input id="side" type="number" step="0.1" value="1.4"></div>
           <div class="field"><label for="span">동수/연동 수</label><input id="span" type="number" step="1" value="1"></div>
+          <div class="field"><label for="snowDepth">요구 적설심 cm</label><input id="snowDepth" type="number" step="1" value="35"></div>
+          <div class="field"><label for="windSpeed">요구 풍속 m/s</label><input id="windSpeed" type="number" step="1" value="30"></div>
+          <div class="field"><label for="cropUse">작목/용도</label><input id="cropUse" value="딸기"></div>
         </div>
         <div class="grid">
           <label class="check"><input id="autoVent" type="checkbox" checked> 측창 자동개폐</label>
@@ -364,7 +372,7 @@
   <script>
     const data = window.GREENHOUSE_MASTER || [];
     const $ = id => document.querySelector(id);
-    const fields = ['#customerName','#customerPhone','#customerEmail','#projectRegion','#leadMemo','#modelSelect','#width','#length','#side','#span','#autoVent','#curtain','#screen','#irrigation','#coverFilm','#pipeUnit','#purlinUnit','#coverUnit','#clampUnit','#foundationUnit','#motorUnit','#curtainUnit','#screenUnit','#laborRate','#marginRate','#contingencyRate','#vatRate','#memo'];
+    const fields = ['#customerName','#customerPhone','#customerEmail','#projectRegion','#leadMemo','#modelSelect','#width','#length','#side','#span','#snowDepth','#windSpeed','#cropUse','#autoVent','#curtain','#screen','#irrigation','#coverFilm','#pipeUnit','#purlinUnit','#coverUnit','#clampUnit','#foundationUnit','#motorUnit','#curtainUnit','#screenUnit','#laborRate','#marginRate','#contingencyRate','#vatRate','#memo'];
     function num(id) { return Number(String($(id).value || '').replace(/[^\d.-]/g,'')) || 0; }
     function won(v) {
       if (!isFinite(v) || v <= 0) return '-';
@@ -415,6 +423,63 @@
     }
     function selectedModel() {
       return data.find(r => r.model_code === $('#modelSelect').value) || data[0] || {};
+    }
+    function setValue(id, value) {
+      if (value === undefined || value === null || value === '') return;
+      const el = $(id);
+      if (el) el.value = value;
+    }
+    function setChecked(id, checked) {
+      const el = $(id);
+      if (el) el.checked = Boolean(checked);
+    }
+    function parseRequestPayload(raw) {
+      const text = String(raw || '').trim();
+      if (!text) return null;
+      try {
+        return JSON.parse(text);
+      } catch (_) {
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        if (start >= 0 && end > start) return JSON.parse(text.slice(start, end + 1));
+        throw new Error('JSON 형식을 찾을 수 없습니다.');
+      }
+    }
+    function applyRequestPayload() {
+      let payload;
+      try {
+        payload = parseRequestPayload($('#requestPayload').value);
+      } catch (error) {
+        alert(`고객 요청을 불러오지 못했습니다: ${error.message}`);
+        return;
+      }
+      if (!payload) return;
+      const lead = payload.lead || {};
+      const greenhouse = payload.greenhouse || {};
+      const estimate = payload.estimate || {};
+      setValue('#customerPhone', lead.phone);
+      setValue('#customerEmail', lead.email);
+      setValue('#leadMemo', [
+        lead.memo ? `요구사항: ${lead.memo}` : '',
+        lead.consultationWanted ? `상담희망: ${lead.consultationWanted === 'yes' ? '예' : '아니오'}` : ''
+      ].filter(Boolean).join('\n'));
+      setValue('#width', greenhouse.widthM);
+      setValue('#length', greenhouse.lengthM);
+      setValue('#side', greenhouse.sideHeightM);
+      setValue('#span', greenhouse.spanCount);
+      setValue('#snowDepth', greenhouse.snowDepthCm);
+      setValue('#windSpeed', greenhouse.windSpeedMs);
+      setValue('#cropUse', greenhouse.crop);
+      setValue('#coverFilm', greenhouse.coverFilm);
+      if (estimate.selectedModel && data.some(r => r.model_code === estimate.selectedModel)) {
+        setValue('#modelSelect', estimate.selectedModel);
+      }
+      const requests = greenhouse.requests || [];
+      setChecked('#autoVent', requests.includes('측창 자동개폐'));
+      setChecked('#curtain', requests.includes('다겹보온커튼'));
+      setChecked('#screen', requests.includes('차광/스크린'));
+      setChecked('#irrigation', requests.includes('관수/양액 연동'));
+      render();
     }
     function tableRows(obj) {
       return Object.entries(obj).map(([k,v]) => `<tr><th>${k}</th><td>${v || '-'}</td></tr>`).join('');
@@ -575,7 +640,9 @@
         연락처: $('#customerPhone').value || '-',
         이메일: $('#customerEmail').value || '-',
         시공지역: $('#projectRegion').value || '-',
-        문의메모: $('#leadMemo').value || '-'
+        문의메모: $('#leadMemo').value || '-',
+        작목용도: $('#cropUse').value || '-',
+        요구내재해: `적설 ${$('#snowDepth').value || '-'}cm / 풍속 ${$('#windSpeed').value || '-'}m/s`
       });
       const costRows = [
         ['직접재료비', '물량 x 관리자 단가', c.material],
@@ -594,7 +661,9 @@
         c.bom.map(r => `<tr><td data-label="품목">${r[0]}</td><td data-label="단위">${r[1]}</td><td class="money" data-label="수량">${r[2].toLocaleString('ko-KR')}</td><td class="money" data-label="단가">${won(r[3])}</td><td class="money" data-label="금액">${won(r[2] * r[3])}</td></tr>`).join('');
       const assumptions = [
         ['표준 모델', `${c.model.model_code || '-'} / ${c.model.facility_type || '-'}`],
-        ['내재해 기준', `적설 ${c.model.snow_depth_range_cm || '-'}, 풍속 ${c.model.wind_speed_range_m_s || '-'}`],
+        ['고객 요구 내재해', `적설 ${$('#snowDepth').value || '-'}cm, 풍속 ${$('#windSpeed').value || '-'}m/s`],
+        ['선택 모델 내재해', `적설 ${c.model.snow_depth_range_cm || '-'}, 풍속 ${c.model.wind_speed_range_m_s || '-'}`],
+        ['작목/용도', $('#cropUse').value || '-'],
         ['측고 보정', `표준 ${c.heightAdj.standardSide.toFixed(1)}m → 입력 ${c.side.toFixed(1)}m, 측면 보강 ${c.heightAdj.extraSideRows}줄 추가`],
         ['피복 비닐', `${c.coverFilm.name} / ${c.coverFilm.note}`],
         ['서까래 간격', `${c.spacing.toFixed(2)}m, 표준 미기재 시 임의 0.6m`],
@@ -622,6 +691,8 @@
         `이메일: ${$('#customerEmail').value || '-'}`,
         `시공지역: ${$('#projectRegion').value || '-'}`,
         `문의메모: ${$('#leadMemo').value || '-'}`,
+        `작목/용도: ${$('#cropUse').value || '-'}`,
+        `요구 내재해: 적설 ${$('#snowDepth').value || '-'}cm / 풍속 ${$('#windSpeed').value || '-'}m/s`,
         '',
         `표준모델: ${c.model.model_code}`,
         `면적: ${Math.round(c.area).toLocaleString('ko-KR')}㎡`,
@@ -641,6 +712,7 @@
     });
     $('#printBtn').addEventListener('click', () => window.print());
     $('#copyText').addEventListener('click', copyReport);
+    $('#loadRequest').addEventListener('click', applyRequestPayload);
     render();
   </script>
 </body>

@@ -784,6 +784,7 @@
         <input type="hidden" name="_template" value="table">
         <input type="hidden" name="quote_summary" id="leadQuoteSummary">
         <input type="hidden" name="quote_detail" id="leadQuoteDetail">
+        <input type="hidden" name="quote_payload" id="leadQuotePayload">
         <input type="hidden" name="page_url" id="leadPageUrl">
         <div class="detail-grid">
           <div class="field">
@@ -1353,6 +1354,7 @@
     function fillLeadHiddenFields() {
       const q = estimate();
       const requests = requestLabels().join(', ') || '추가 선택 없음';
+      const lead = readLeadInfo();
       document.querySelector('#leadQuoteSummary').value = quoteSummary(q);
       document.querySelector('#leadQuoteDetail').value = [
         `내재해: 적설 ${q.selected.snow_depth_range_cm}, 풍속 ${q.selected.wind_speed_range_m_s}`,
@@ -1361,6 +1363,42 @@
         `월구독: ${q.mesh.plan} ${won(q.mesh.monthly)}/월`,
         `추가요청: ${requests}`
       ].join('\n');
+      document.querySelector('#leadQuotePayload').value = JSON.stringify({
+        version: "carillon_quote_request_v1",
+        submittedAt: new Date().toISOString(),
+        lead: {
+          email: lead.email,
+          phone: lead.phone,
+          memo: lead.memo,
+          consultationWanted: lead.consult
+        },
+        greenhouse: {
+          facilityType,
+          widthM: Number(els.width.value),
+          lengthM: Number(els.length.value),
+          sideHeightM: Number(els.side.value),
+          spanCount: Number(els.span.value),
+          snowDepthCm: Number(els.snow.value),
+          windSpeedMs: Number(els.wind.value),
+          crop: els.crop.value,
+          coverFilm: q.coverFilm.name,
+          controlChannels: Number(els.control.value),
+          sensorPoints: Number(els.sensor.value),
+          hub: els.hub.value,
+          requests: requestLabels()
+        },
+        estimate: {
+          selectedModel: q.selected.model_code,
+          selectedFacilityType: q.selected.facility_type,
+          areaM2: Math.round(q.area),
+          pyeong: Math.round(q.pyeong),
+          initialMinKrw: Math.round(q.initialMin),
+          initialMaxKrw: Math.round(q.initialMax),
+          meshHardwareKrw: Math.round(q.mesh.hw),
+          meshMonthlyKrw: Math.round(q.mesh.monthly),
+          coverFilmNote: q.coverFilm.note
+        }
+      }, null, 2);
       document.querySelector('#leadPageUrl').value = location.href;
     }
     function readLeadInfo() {
