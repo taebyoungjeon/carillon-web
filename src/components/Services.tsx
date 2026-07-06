@@ -27,6 +27,20 @@ const services = [
   },
 ];
 
+const simulationInputs = [
+  { label: "외기 조건", value: "-8°C / 32°C" },
+  { label: "설정 온도", value: "18~26°C" },
+  { label: "피복 조건", value: "PO 0.15mm" },
+  { label: "환기 요소", value: "측창·천창·팬" },
+];
+
+const simulationResults = [
+  { label: "예상 부하", value: "118kW", note: "최대 난방 기준" },
+  { label: "기류 속도", value: "0.35m/s", note: "작물 생육 구간 평균" },
+  { label: "온도 편차", value: "±1.8°C", note: "개선 배치 적용 후" },
+  { label: "정체 구간", value: "32%↓", note: "환기 사각지대 감소" },
+];
+
 export default function Services() {
   const refs = useRef<(HTMLDivElement | null)[]>([]);
   const [energyOpen, setEnergyOpen] = useState(false);
@@ -174,10 +188,10 @@ export default function Services() {
 
                   <div className="mt-7 grid gap-3">
                     {[
-                      "냉난방 부하 계산과 설비 용량 검토",
-                      "측창·천창·팬 배치에 따른 기류 흐름 분석",
-                      "작목과 피복 조건을 반영한 온도 분포 검토",
-                      "시공 견적과 AI 제어 적용 범위 연결",
+                      "일사량, 외기 온도, 피복재, 작목 생육 온도 기준 반영",
+                      "측창·천창·순환팬 배치에 따른 기류 흐름과 정체 구간 검토",
+                      "난방기·히트펌프 등 설비 용량과 운전 조건 비교",
+                      "견적 산출, 시공 범위, AI 제어 적용 기준으로 연결",
                     ].map((item) => (
                       <div
                         key={item}
@@ -187,15 +201,40 @@ export default function Services() {
                       </div>
                     ))}
                   </div>
+
+                  <div className="mt-7 rounded-lg border border-white/10 bg-black/20 p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-gold">
+                      Simulation Inputs
+                    </p>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      {simulationInputs.map((item) => (
+                        <div key={item.label} className="rounded border border-white/10 bg-white/[0.03] p-3">
+                          <p className="text-[11px] text-white/35">{item.label}</p>
+                          <p className="mt-1 text-[14px] font-semibold text-white">{item.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="rounded-lg bg-gold/10 p-5">
                   <p className="text-[12px] font-semibold uppercase tracking-[0.25em] text-gold">
-                    Output
+                    Example Output
                   </p>
-                  <p className="mt-3 text-[14px] leading-[1.75] text-white/70">
-                    분석 결과는 견적 산출, 장비 사양, 시공 범위, 향후 AI 환경제어 적용 계획의
-                    기준 자료로 활용됩니다.
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    {simulationResults.map((item) => (
+                      <div key={item.label} className="rounded border border-gold/15 bg-black/20 p-3">
+                        <p className="text-[11px] text-white/45">{item.label}</p>
+                        <p className="mt-1 font-serif text-[24px] font-bold leading-none text-gold">
+                          {item.value}
+                        </p>
+                        <p className="mt-2 text-[11px] leading-snug text-white/40">{item.note}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-4 text-[12px] leading-[1.65] text-white/45">
+                    위 수치는 온실 규모와 현장 조건에 따라 달라지는 예시값이며, 실제 컨설팅에서는
+                    도면·자재·설비 조건을 반영해 산출합니다.
                   </p>
                   <a
                     href="/quote"
