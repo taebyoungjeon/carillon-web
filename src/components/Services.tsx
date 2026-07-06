@@ -1,11 +1,13 @@
 "use client";
+import Image from "next/image";
 import { useEffect, useRef } from "react";
+import { useState } from "react";
 
 const services = [
   {
     tag: "Engineering",
-    title: "냉난방 부하\n계산",
-    desc: "지역, 피복, 규모, 작목, 운영 조건을 기준으로 냉난방 설비 용량과 기본 구축 방향을 검토합니다.",
+    title: "에너지\n컨설팅",
+    desc: "냉난방 부하 계산과 기류 분석을 기반으로 설비 용량, 환기 경로, 기본 구축 방향을 검토합니다.",
     kpiNum: "LOAD",
     kpiLabel: "설비 용량 산정 기준",
   },
@@ -27,6 +29,7 @@ const services = [
 
 export default function Services() {
   const refs = useRef<(HTMLDivElement | null)[]>([]);
+  const [energyOpen, setEnergyOpen] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -99,6 +102,16 @@ export default function Services() {
               {/* desc */}
               <p className="text-[14px] text-white/40 leading-[1.8] mb-9">{s.desc}</p>
 
+              {i === 0 && (
+                <button
+                  type="button"
+                  onClick={() => setEnergyOpen(true)}
+                  className="mb-9 inline-flex min-h-11 items-center justify-center rounded border border-gold/35 px-5 text-[12px] font-semibold tracking-widest text-gold transition-all duration-200 hover:bg-gold hover:text-ink"
+                >
+                  에너지 컨설팅 하기
+                </button>
+              )}
+
               {/* KPI */}
               <div className="pt-7 border-t border-white/[0.06]">
                 <p className="font-serif text-[42px] font-bold text-gold leading-none">{s.kpiNum}</p>
@@ -109,6 +122,93 @@ export default function Services() {
         </div>
 
       </div>
+
+      {energyOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 px-4 py-5 backdrop-blur-sm md:items-center md:px-8"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="energy-modal-title"
+          onClick={() => setEnergyOpen(false)}
+        >
+          <div
+            className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-xl border border-white/10 bg-[#111111] shadow-[0_30px_100px_rgba(0,0,0,0.55)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 md:px-7">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-gold">
+                  Energy Consulting
+                </p>
+                <h3 id="energy-modal-title" className="mt-1 text-[20px] font-bold text-white md:text-[24px]">
+                  유체역학 기반 온실 기류·에너지 분석 예시
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEnergyOpen(false)}
+                className="grid h-10 w-10 place-items-center rounded border border-white/15 text-[22px] leading-none text-white/70 transition-colors hover:border-gold hover:text-gold"
+                aria-label="닫기"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="grid gap-0 md:grid-cols-[1.35fr_0.85fr]">
+              <div className="relative min-h-[260px] bg-black md:min-h-[520px]">
+                <Image
+                  src="/images/greenhouse-airflow-simulation.png"
+                  alt="비닐하우스 내부 기류와 온도 분포 시뮬레이션 예시"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 62vw"
+                  className="object-cover"
+                />
+              </div>
+
+              <div className="flex flex-col justify-between gap-8 border-t border-white/10 p-6 md:border-l md:border-t-0 md:p-8">
+                <div>
+                  <p className="text-[14px] leading-[1.85] text-white/55">
+                    칼리온은 단순 장비 추천이 아니라 온실 내부의 열 이동, 기류 흐름, 환기 경로,
+                    설비 용량 조건을 함께 검토해 초기 설계와 견적의 기준을 잡습니다.
+                  </p>
+
+                  <div className="mt-7 grid gap-3">
+                    {[
+                      "냉난방 부하 계산과 설비 용량 검토",
+                      "측창·천창·팬 배치에 따른 기류 흐름 분석",
+                      "작목과 피복 조건을 반영한 온도 분포 검토",
+                      "시공 견적과 AI 제어 적용 범위 연결",
+                    ].map((item) => (
+                      <div
+                        key={item}
+                        className="rounded border border-white/10 bg-white/[0.035] px-4 py-3 text-[13px] leading-relaxed text-white/70"
+                      >
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-lg bg-gold/10 p-5">
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.25em] text-gold">
+                    Output
+                  </p>
+                  <p className="mt-3 text-[14px] leading-[1.75] text-white/70">
+                    분석 결과는 견적 산출, 장비 사양, 시공 범위, 향후 AI 환경제어 적용 계획의
+                    기준 자료로 활용됩니다.
+                  </p>
+                  <a
+                    href="/quote"
+                    className="mt-5 inline-flex min-h-11 items-center justify-center rounded bg-gold px-5 text-[12px] font-bold tracking-widest text-ink transition-transform duration-200 hover:-translate-y-0.5"
+                  >
+                    온실견적내기 →
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
