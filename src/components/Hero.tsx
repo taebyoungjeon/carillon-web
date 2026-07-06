@@ -66,10 +66,10 @@ export default function Hero() {
         {/* CTAs */}
         <div className="animate-fade-up-4 flex flex-col sm:flex-row gap-3 justify-center">
           <a
-            href="#cta"
+            href="/quote"
             className="inline-flex items-center gap-2 bg-gold text-white text-[13px] font-semibold tracking-widest uppercase px-8 py-4 rounded hover:bg-gold-light transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(197,160,90,0.35)] group"
           >
-            무료 에너지 진단 신청
+            온실견적내기
             <span className="transition-transform duration-200 group-hover:translate-x-1">→</span>
           </a>
           <a
