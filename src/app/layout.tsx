@@ -19,7 +19,7 @@ const jakartaSans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "칼리온 Carillion — Glass & Greenhouse Engineering",
   description:
-    "설계부터 시공, AI 제어까지. 온실 전문 설계·시공·에너지 컨설팅 원스톱 솔루션.",
+    "냉난방 부하 계산부터 온실 견적, 시공, AI 솔루션 적용까지 연결하는 온실 엔지니어링 파트너.",
 };
 
 export default function RootLayout({

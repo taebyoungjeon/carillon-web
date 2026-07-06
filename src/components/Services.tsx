@@ -3,25 +3,25 @@ import { useEffect, useRef } from "react";
 
 const services = [
   {
-    tag: "Energy",
-    title: "에너지 컨설팅",
-    desc: "히트펌프·지열 연동 설계와 에너지 시뮬레이션으로 최적의 냉난방 시스템을 구성합니다.",
-    kpiNum: "40%",
-    kpiLabel: "냉난방 비용 절감",
+    tag: "Engineering",
+    title: "냉난방 부하\n계산",
+    desc: "지역, 피복, 규모, 작목, 운영 조건을 기준으로 냉난방 설비 용량과 기본 구축 방향을 검토합니다.",
+    kpiNum: "LOAD",
+    kpiLabel: "설비 용량 산정 기준",
   },
   {
-    tag: "Automation",
-    title: "Greenhouse\nAutomation",
-    desc: "3D BIM 기반 설계부터 시공, 환경제어까지 원스톱으로 구축합니다. 하자 분쟁 제로.",
-    kpiNum: "30%",
-    kpiLabel: "설계~준공 기간 단축",
+    tag: "Quote & Build",
+    title: "온실 견적·시공",
+    desc: "표준 규격 매칭, 자재 구성, 현장 조건을 반영해 견적부터 시공 실행까지 연결합니다.",
+    kpiNum: "QUOTE",
+    kpiLabel: "견적부터 실행까지",
   },
   {
     tag: "AI Solution",
-    title: "AI Image\nMonitoring",
-    desc: "작물 영상 분석으로 생육 이상과 병충해를 72시간 전에 조기 감지합니다.",
-    kpiNum: "15%",
-    kpiLabel: "수확량 편차 이내 안정화",
+    title: "AI 솔루션\n적용",
+    desc: "센서, 영상, 환경제어 데이터를 기반으로 운영 단계에서 활용 가능한 AI 솔루션 적용안을 설계합니다.",
+    kpiNum: "AI",
+    kpiLabel: "제어·모니터링 확장",
   },
 ];
 
@@ -70,9 +70,9 @@ export default function Services() {
           </div>
           <div className="md:text-right">
             <p className="text-[15px] text-white/40 leading-[1.9]">
-              설계 · 시공 · AI 제어를<br />
+              부하 계산 · 견적 · 시공 · AI를<br />
               하나의 팀이 책임지는<br />
-              원스톱 온실 구축
+              온실 엔지니어링 흐름
             </p>
           </div>
         </div>

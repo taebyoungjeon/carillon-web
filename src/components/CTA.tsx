@@ -15,15 +15,15 @@ export default function CTA() {
         <div className="mx-auto mt-5 mb-6 w-10 h-0.5 bg-gold" />
 
         <h2 className="font-serif text-[clamp(28px,4vw,48px)] font-semibold text-ink leading-tight mb-5">
-          온실 한 동의 에너지 비용,<br />얼마나 줄일 수 있을까요?
+          온실 구축 계획,<br />견적부터 잡아볼까요?
         </h2>
 
         <p className="text-[16px] md:text-[17px] text-stone-500 leading-[1.9] mb-12">
-          칼리온이 <strong className="font-semibold text-ink">무료 에너지 사전 진단</strong>을 제공합니다.
+          냉난방 부하 계산, 표준 규격 검토, 시공 조건, AI 솔루션 적용 가능성을
           <br className="hidden sm:block" />
-          현재 도면이나 계획이 있다면 보내주세요 —
+          하나의 흐름으로 검토합니다.
           <br className="hidden sm:block" />
-          <strong className="font-semibold text-ink">48시간 내</strong> 절감 예상 리포트를 드립니다.
+          먼저 <strong className="font-semibold text-ink">온실 견적 시뮬레이터</strong>로 기본 조건을 확인해보세요.
         </p>
 
         {/* buttons */}
@@ -32,7 +32,7 @@ export default function CTA() {
             href="/quote"
             className="inline-flex items-center justify-center gap-2 bg-ink text-white text-[13px] font-semibold tracking-widest uppercase px-9 py-4 rounded hover:bg-gold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(0,0,0,0.15)] group"
           >
-            예상 견적 확인하기
+            온실견적내기
             <span className="transition-transform duration-200 group-hover:translate-x-1">→</span>
           </a>
           <a

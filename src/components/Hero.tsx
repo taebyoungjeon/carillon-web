@@ -1,10 +1,10 @@
 import Image from "next/image";
 
 const stats = [
-  { num: "40%", label: "냉난방 비용 절감" },
-  { num: "30%", label: "공사 기간 단축" },
-  { num: "72h", label: "병충해 조기 감지" },
-  { num: "0건", label: "하자 분쟁 건수" },
+  { num: "LOAD", label: "냉난방 부하 계산" },
+  { num: "QUOTE", label: "온실 견적 산출" },
+  { num: "BUILD", label: "시공 연계" },
+  { num: "AI", label: "솔루션 적용" },
 ];
 
 export default function Hero() {
@@ -58,9 +58,9 @@ export default function Hero() {
 
         {/* sub */}
         <p className="animate-fade-up-3 text-[16px] md:text-[17px] text-stone-500 leading-[1.9] mb-12 max-w-xl">
-          설계부터 시공, AI 제어까지 — 3개 업체에 따로 맡기던 온실 구축을
+          냉난방 부하 계산부터 온실 견적, 시공, AI 솔루션 적용까지 —
           <br className="hidden sm:block" />
-          <strong className="font-semibold text-ink">칼리온 하나로</strong> 끝내세요.
+          초기 검토부터 구축까지 <strong className="font-semibold text-ink">칼리온 하나로</strong> 연결하세요.
         </p>
 
         {/* CTAs */}
