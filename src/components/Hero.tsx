@@ -73,10 +73,10 @@ export default function Hero() {
             <span className="transition-transform duration-200 group-hover:translate-x-1">→</span>
           </a>
           <a
-            href="#services"
+            href="/blog"
             className="inline-flex items-center gap-2 border border-ink text-ink text-[13px] font-semibold tracking-widest uppercase px-8 py-4 rounded hover:bg-ink hover:text-white transition-all duration-300 hover:-translate-y-0.5"
           >
-            서비스 살펴보기
+            수행실적 살펴보기
           </a>
         </div>
 
