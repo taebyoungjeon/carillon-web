@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>칼리온 온실 견적 관리자</title>
+  <script src="../../public/quote-tool/greenhouse-data.js"></script>
+  <style>
+    :root {
+      --bg: #f6f7f4;
+      --ink: #17211c;
+      --muted: #65726b;
+      --line: #d8ded8;
+      --panel: #fff;
+      --field: #eef3ef;
+      --green: #111111;
+      --gold: #c6a15b;
+      --blue: #285b7a;
+      --amber: #9d6a1f;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); letter-spacing: 0; }
+    button, input, select, textarea { font: inherit; }
+    header {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 22px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(246,247,244,.95);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .brand { font-weight: 820; letter-spacing: .08em; }
+    .brand small { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; font-weight: 650; letter-spacing: 0; }
+    .actions { display: flex; gap: 8px; }
+    .btn {
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      padding: 0 14px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn.primary { background: var(--green); border-color: var(--green); color: #fff; }
+    .btn:hover { border-color: var(--gold); }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(340px, 430px) minmax(0, 1fr);
+      min-height: calc(100vh - 58px);
+    }
+    aside {
+      background: #fff;
+      border-right: 1px solid var(--line);
+      padding: 18px;
+      overflow: auto;
+      max-height: calc(100vh - 58px);
+    }
+    main { padding: 18px; min-width: 0; }
+    section {
+      border-bottom: 1px solid var(--line);
+      padding: 0 0 16px;
+      margin-bottom: 16px;
+    }
+    h1, h2, h3 { margin: 0 0 12px; line-height: 1.25; }
+    h1 { font-size: 24px; }
+    h2 { font-size: 17px; }
+    h3 { font-size: 15px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    label { font-size: 12px; color: var(--muted); }
+    input, select, textarea {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 8px 10px;
+      background: var(--field);
+      color: var(--ink);
+    }
+    textarea { min-height: 96px; resize: vertical; }
+    .check { min-height: 40px; border: 1px solid var(--line); border-radius: 7px; background: var(--field); padding: 8px 10px; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .check input { width: auto; min-height: auto; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(140px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .card .label { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+    .card .value { font-size: 22px; font-weight: 800; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
+    th, td { border-bottom: 1px solid var(--line); padding: 9px 8px; text-align: left; vertical-align: top; }
+    th { color: var(--muted); background: #f0f4ef; font-weight: 700; }
+    td.money, th.money { text-align: right; white-space: nowrap; }
+    .report { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+    .notice { color: #684713; background: #fff8e7; border: 1px solid #dcc89f; border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.5; margin-bottom: 14px; }
+    .internal-note { color: #4b5563; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.5; margin-bottom: 14px; }
+    .source { color: var(--muted); font-size: 12px; line-height: 1.55; margin-top: 14px; }
+    .drawing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 10px 0 18px;
+    }
+    .drawing-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+      break-inside: avoid;
+    }
+    .drawing-card h3 { margin: 0 0 8px; font-size: 13px; }
+    .drawing-card.featured { grid-column: 1 / -1; }
+    .drawing-card svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #fbfcfa;
+      border: 1px solid #edf1ed;
+      border-radius: 6px;
+    }
+    .material-guide {
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) minmax(260px, .7fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .photo-guide {
+      overflow: hidden;
+      border: 1px solid #edf1ed;
+      border-radius: 8px;
+      background: #fbfcfa;
+    }
+    .photo-guide-frame { position: relative; overflow: hidden; }
+    .photo-guide img { display: block; width: 100%; height: auto; }
+    .photo-guide .marker {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: #111;
+      color: #fff;
+      border: 2px solid #fff;
+      box-shadow: 0 6px 16px rgba(0,0,0,.24);
+      font-size: 12px;
+      font-weight: 800;
+      transform: translate(-50%, -50%);
+    }
+    .photo-guide .marker::after {
+      content: "";
+      position: absolute;
+      inset: -6px;
+      border-radius: inherit;
+      border: 1px solid rgba(198, 161, 91, .72);
+    }
+    .photo-guide-caption {
+      margin: 0;
+      border-top: 1px solid rgba(217,223,216,.9);
+      background: rgba(255,255,255,.92);
+      padding: 11px 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .callout-list {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .callout-list li {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 8px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcfa;
+      padding: 8px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .callout-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: #111;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .callout-list b { display: block; margin-bottom: 2px; font-size: 12px; color: var(--ink); }
+    .callout-list span { color: var(--muted); }
+    @media (max-width: 980px) {
+      .layout { display: block; }
+      aside { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
+      .summary { grid-template-columns: 1fr 1fr; }
+      .drawing-grid { grid-template-columns: 1fr; }
+      .material-guide { grid-template-columns: 1fr; }
+      .report { padding: 14px; }
+      #costTable, #costTable tbody, #costTable tr, #costTable td, #costTable th,
+      #bomTable, #bomTable tbody, #bomTable tr, #bomTable td, #bomTable th {
+        display: block;
+        width: 100%;
+      }
+      #costTable tr:first-child, #bomTable tr:first-child { display: none; }
+      #costTable tr, #bomTable tr {
+        border-bottom: 1px solid var(--line);
+        padding: 10px 0;
+      }
+      #costTable td, #bomTable td {
+        border-bottom: 0;
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 4px 0;
+        text-align: right;
+        white-space: normal;
+        word-break: keep-all;
+        overflow-wrap: anywhere;
+      }
+      #costTable td::before, #bomTable td::before {
+        content: attr(data-label);
+        flex: 0 0 82px;
+        color: var(--muted);
+        font-weight: 700;
+        text-align: left;
+      }
+      #costTable td:first-child, #bomTable td:first-child {
+        font-weight: 760;
+        text-align: left;
+      }
+    }
+    @media print {
+      header, aside, .screen-only { display: none !important; }
+      body { background: #fff; }
+      main { padding: 0; }
+      .report { border: 0; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">CARILLON<small>내부 온실 견적 관리자</small></div>
+    <div class="actions">
+      <a class="btn" href="../../public/quote-tool/index.html">고객 화면</a>
+      <button class="btn" id="copyText">텍스트 복사</button>
+      <button class="btn primary" id="printBtn">출력</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <section>
+        <h2>고객/문의 정보</h2>
+        <div class="grid">
+          <div class="field"><label for="customerName">고객명</label><input id="customerName" placeholder="예: 홍길동"></div>
+          <div class="field"><label for="customerPhone">연락처</label><input id="customerPhone" placeholder="010-0000-0000"></div>
+          <div class="field"><label for="customerEmail">이메일</label><input id="customerEmail" placeholder="example@email.com"></div>
+          <div class="field"><label for="projectRegion">시공 지역</label><input id="projectRegion" placeholder="예: 충남 홍성"></div>
+        </div>
+        <div class="field">
+          <label for="leadMemo">문의/상담 메모</label>
+          <textarea id="leadMemo" placeholder="고객 요구사항, 상담 희망 여부, 현장 특이사항"></textarea>
+        </div>
+      </section>
+
+      <section>
+        <h2>현장 조건</h2>
+        <div class="field">
+          <label for="modelSelect">표준 모델</label>
+          <select id="modelSelect"></select>
+        </div>
+        <div class="grid">
+          <div class="field"><label for="width">폭 m</label><input id="width" type="number" step="0.1" value="7"></div>
+          <div class="field"><label for="length">길이 m</label><input id="length" type="number" step="1" value="97"></div>
+          <div class="field"><label for="side">측고 m</label><input id="side" type="number" step="0.1" value="1.4"></div>
+          <div class="field"><label for="span">동수/연동 수</label><input id="span" type="number" step="1" value="1"></div>
+        </div>
+        <div class="grid">
+          <label class="check"><input id="autoVent" type="checkbox" checked> 측창 자동개폐</label>
+          <label class="check"><input id="curtain" type="checkbox"> 다겹보온커튼</label>
+          <label class="check"><input id="screen" type="checkbox"> 차광/스크린</label>
+          <label class="check"><input id="irrigation" type="checkbox"> 관수/양액 연동</label>
+        </div>
+        <div class="field">
+          <label for="coverFilm">피복 비닐</label>
+          <select id="coverFilm">
+            <option value="장수비닐">장수비닐</option>
+            <option value="PO필름">PO필름</option>
+          </select>
+        </div>
+      </section>
+
+      <section>
+        <h2>단가/보정</h2>
+        <div class="grid">
+          <div class="field"><label for="pipeUnit">골조 파이프 원/m</label><input id="pipeUnit" type="number" value="4200"></div>
+          <div class="field"><label for="purlinUnit">가로대 원/m</label><input id="purlinUnit" type="number" value="3200"></div>
+          <div class="field"><label for="coverUnit">피복 기본 원/㎡</label><input id="coverUnit" type="number" value="2800"></div>
+          <div class="field"><label for="clampUnit">조리개 원/개</label><input id="clampUnit" type="number" value="950"></div>
+          <div class="field"><label for="foundationUnit">기초/고정 원/m</label><input id="foundationUnit" type="number" value="9500"></div>
+          <div class="field"><label for="motorUnit">모터/축 원/대</label><input id="motorUnit" type="number" value="350000"></div>
+          <div class="field"><label for="curtainUnit">다겹커튼 원/㎡</label><input id="curtainUnit" type="number" value="22000"></div>
+          <div class="field"><label for="screenUnit">스크린 원/㎡</label><input id="screenUnit" type="number" value="12000"></div>
+          <div class="field"><label for="laborRate">노무/장비 %</label><input id="laborRate" type="number" value="22"></div>
+          <div class="field"><label for="marginRate">관리/마진 %</label><input id="marginRate" type="number" value="12"></div>
+          <div class="field"><label for="contingencyRate">예비비 %</label><input id="contingencyRate" type="number" value="7"></div>
+          <div class="field"><label for="vatRate">VAT %</label><input id="vatRate" type="number" value="10"></div>
+        </div>
+        <div class="field">
+          <label for="memo">고객 전달 메모</label>
+          <textarea id="memo">현장 실사 후 기초, 전기 인입, 커튼/스크린 세부 사양을 확정해야 합니다.</textarea>
+        </div>
+      </section>
+    </aside>
+
+    <main>
+      <div class="report" id="report">
+        <h1>칼리온 온실 상세 원가계산서 / 물량내역서</h1>
+        <div class="internal-note">내부 검토용 HTML입니다. 이 파일은 <strong>public 폴더 밖</strong>에 있어 웹 공개 URL로 배포하지 않는 용도입니다.</div>
+        <div class="notice">관리자용 초안입니다. 단가와 수량은 현장 실사 및 실제 도면 반영 전까지 임의 산출값입니다.</div>
+        <h2>고객/문의 정보</h2>
+        <table id="customerTable"></table>
+        <div class="summary">
+          <div class="card"><div class="label">표준 모델</div><div class="value" id="modelOut">-</div></div>
+          <div class="card"><div class="label">면적</div><div class="value" id="areaOut">-</div></div>
+          <div class="card"><div class="label">공급가</div><div class="value" id="supplyOut">-</div></div>
+          <div class="card"><div class="label">VAT 포함</div><div class="value" id="vatOut">-</div></div>
+        </div>
+        <h2>간이 도면</h2>
+        <div class="drawing-grid" id="drawingPreview"></div>
+        <h2>원가계산서</h2>
+        <table id="costTable"></table>
+        <h2>물량내역서</h2>
+        <table id="bomTable"></table>
+        <h2>가정 및 메모</h2>
+        <table id="assumptionTable"></table>
+        <div class="source">기준 데이터: 농사로 2026 시설규격, AKAF 2014 설계도, AKAF 2024 예정공사비, 칼리온 내부 견적 기준 초안. 실제 고객 제출 전 관리자 검토 필요.</div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const data = window.GREENHOUSE_MASTER || [];
+    const $ = id => document.querySelector(id);
+    const fields = ['#customerName','#customerPhone','#customerEmail','#projectRegion','#leadMemo','#modelSelect','#width','#length','#side','#span','#autoVent','#curtain','#screen','#irrigation','#coverFilm','#pipeUnit','#purlinUnit','#coverUnit','#clampUnit','#foundationUnit','#motorUnit','#curtainUnit','#screenUnit','#laborRate','#marginRate','#contingencyRate','#vatRate','#memo'];
+    function num(id) { return Number(String($(id).value || '').replace(/[^\d.-]/g,'')) || 0; }
+    function won(v) {
+      if (!isFinite(v) || v <= 0) return '-';
+      return Math.round(v).toLocaleString('ko-KR') + '원';
+    }
+    function shortWon(v) {
+      if (!isFinite(v) || v <= 0) return '-';
+      if (v >= 100000000) return (v / 100000000).toFixed(1).replace('.0','') + '억원';
+      return Math.round(v / 10000).toLocaleString('ko-KR') + '만원';
+    }
+    function rangeMid(text) {
+      const nums = String(text || '').match(/\d+(?:\.\d+)?/g);
+      if (!nums) return 0;
+      return nums.map(Number).reduce((a,b)=>a+b,0) / nums.length;
+    }
+    function estimatedRidge(row, inputSide, width) {
+      const standardSide = rangeMid(row?.side_height_range_m);
+      const standardRidge = rangeMid(row?.ridge_height_range_m);
+      if (standardRidge) return standardRidge + (standardSide ? inputSide - standardSide : 0);
+      return Math.max(inputSide + 1.2, inputSide + width * 0.28);
+    }
+    function sideHeightAdjustment(row, inputSide, width, length, span) {
+      const standardSide = rangeMid(row.side_height_range_m) || inputSide || 1.5;
+      const delta = inputSide - standardSide;
+      const standardCover = width * length * span * 1.18 + (length * 2 + width * span * 2) * standardSide * 0.55;
+      const inputCover = width * length * span * 1.18 + (length * 2 + width * span * 2) * inputSide * 0.55;
+      const extraSideRows = Math.max(0, Math.ceil(Math.max(0, delta) / 0.8) * 2);
+      const braceFactor = 1 + Math.max(0, delta) * 0.08;
+      return { standardSide, delta, inputCover, extraSideRows, braceFactor };
+    }
+    function parseSpacingM(spec) {
+      const m = String(spec || '').match(/@(\d+(?:\.\d+)?)/);
+      if (!m) return 0.6;
+      const raw = Number(m[1]);
+      return raw > 5 ? raw / 100 : raw;
+    }
+    function parsePurlinRows(spec, type) {
+      const m = String(spec || '').match(/(\d+)\s*개/);
+      if (m) return Number(m[1]);
+      if (type === '연동형') return 9;
+      if (type === '광폭형') return 11;
+      return 7;
+    }
+    function coverFilmInfo() {
+      const name = $('#coverFilm')?.value || '장수비닐';
+      if (name === 'PO필름') return { name, factor: 1.18, note: 'PO필름 선택, 피복 기본단가 x1.18 임의 보정' };
+      return { name: '장수비닐', factor: 1, note: '기본 임의 사양' };
+    }
+    function selectedModel() {
+      return data.find(r => r.model_code === $('#modelSelect').value) || data[0] || {};
+    }
+    function tableRows(obj) {
+      return Object.entries(obj).map(([k,v]) => `<tr><th>${k}</th><td>${v || '-'}</td></tr>`).join('');
+    }
+    function materialGuideCard(c) {
+      const callouts = [
+        ['1', '서까래 파이프', '아치형 주 골조입니다. 길이와 간격에 따라 m 수량이 커집니다.'],
+        ['2', '가로대/도리 파이프', '서까래를 길이 방향으로 묶는 수평 파이프입니다. 줄 수와 길이에 비례합니다.'],
+        ['3', '피복비닐/마감재', `${c.coverFilm.name} 기준 피복 면적입니다. 온실 바닥면적보다 여유율이 붙습니다.`],
+        ['4', '기초/고정 구간', '측면과 전후면 하부를 고정하는 구간입니다. 지반과 기초 방식에 따라 달라집니다.'],
+        ['5', '내재해/일반 조리개', '파이프 교차부를 묶는 체결 부속입니다. 교차점이 많을수록 증가합니다.'],
+        ['6', '브레싱/버팀대', '강풍과 횡하중에 버티도록 대각 보강하는 부재입니다.'],
+        ['7', 'MESH 제어모듈', '센서와 개폐기, 제어반을 연결하는 환경제어 장치입니다.'],
+        ['8', '권취/개폐 모터', '측창·천창 비닐을 감고 여닫는 구동 장치입니다. 선택 사양에 따라 반영됩니다.'],
+        ['9', '다겹보온커튼', '상부 또는 내부에 설치되는 보온재입니다. 면적 기준으로 산정합니다.'],
+      ];
+      const markers = [
+        ['1', 65, 15],
+        ['2', 34, 54],
+        ['3', 44, 34],
+        ['4', 18, 83],
+        ['5', 76, 24],
+        ['6', 58, 59],
+        ['7', 70, 72],
+        ['8', 92, 67],
+        ['9', 58, 33],
+      ];
+      return `
+        <article class="drawing-card featured">
+          <h3>물량 항목 안내도</h3>
+          <div class="material-guide">
+            <div class="photo-guide" role="img" aria-label="온실 물량 항목 안내 사진">
+              <div class="photo-guide-frame">
+                <img src="../../public/images/greenhouse-material-guide.png" alt="온실 골조와 피복, 브레싱, 모터, 커튼 위치를 보여주는 예시 이미지">
+                ${markers.map(([num, x, y]) => `<span class="marker" style="left:${x}%;top:${y}%">${num}</span>`).join('')}
+              </div>
+              <p class="photo-guide-caption">
+                폭 ${c.width.toFixed(1)}m x 길이 ${c.length.toFixed(1)}m x ${c.span}동 기준 예시입니다.
+                번호를 물량내역서 품목과 대조해 보세요. 실제 위치와 수량은 현장 조건에 따라 달라집니다.
+              </p>
+            </div>
+            <ol class="callout-list">
+              ${callouts.map(([num, title, desc]) => `
+                <li><span class="callout-num">${num}</span><span><b>${title}</b>${desc}</span></li>
+              `).join('')}
+            </ol>
+          </div>
+        </article>
+      `;
+    }
+    function drawingCards(c) {
+      const width = c.width;
+      const length = c.length;
+      const side = c.side;
+      const span = c.span;
+      const totalWidth = width * span;
+      const ridge = estimatedRidge(c.model, side, width);
+      const frameCount = Math.min(10, Math.max(4, Math.round(length / 12)));
+      const spanLines = Array.from({length: span + 1}, (_, i) => 40 + i * (240 / span));
+      const frameLines = Array.from({length: frameCount + 1}, (_, i) => 40 + i * (150 / frameCount));
+      const sideFrameLines = Array.from({length: frameCount + 1}, (_, i) => 44 + i * (232 / frameCount));
+      const planSpanLines = spanLines.map(x => `<line x1="${x}" y1="30" x2="${x}" y2="180" stroke="#8aa197" stroke-width="1"/>`).join('');
+      const planFrameLines = frameLines.map(y => `<line x1="40" y1="${y}" x2="280" y2="${y}" stroke="#d0d9d4" stroke-width="1"/>`).join('');
+      const elevSpans = Array.from({length: span}, (_, i) => {
+        const x0 = 35 + i * (250 / span);
+        const sw = 250 / span;
+        return `<path d="M ${x0} 170 L ${x0} 100 Q ${x0 + sw / 2} 40 ${x0 + sw} 100 L ${x0 + sw} 170" fill="rgba(204,230,220,.55)" stroke="#254c3c" stroke-width="2"/>`;
+      }).join('');
+      const sideFrames = sideFrameLines.map(x => `<line x1="${x}" y1="168" x2="${x}" y2="74" stroke="#8aa197" stroke-width="1"/>`).join('');
+      return `
+        ${materialGuideCard(c)}
+        <article class="drawing-card">
+          <h3>평면도</h3>
+          <svg viewBox="0 0 320 220" role="img" aria-label="평면도">
+            <rect x="40" y="30" width="240" height="150" fill="rgba(204,230,220,.38)" stroke="#254c3c" stroke-width="2"/>
+            ${planSpanLines}${planFrameLines}
+            <text x="160" y="205" text-anchor="middle" fill="#34443d" font-size="12">전체 폭 ${totalWidth.toFixed(1)}m = ${width.toFixed(1)}m x ${span}동</text>
+            <text x="292" y="108" fill="#34443d" font-size="12" transform="rotate(90 292 108)">길이 ${length.toFixed(1)}m</text>
+          </svg>
+        </article>
+        <article class="drawing-card">
+          <h3>측면도</h3>
+          <svg viewBox="0 0 320 220" role="img" aria-label="측면도">
+            <rect x="44" y="112" width="232" height="56" fill="rgba(204,230,220,.38)" stroke="#254c3c" stroke-width="2"/>
+            <rect x="44" y="74" width="232" height="38" fill="rgba(204,230,220,.22)" stroke="#254c3c" stroke-width="2"/>
+            <line x1="44" y1="112" x2="276" y2="112" stroke="#254c3c" stroke-width="1.5" stroke-dasharray="4 4"/>
+            ${sideFrames}
+            <line x1="44" y1="168" x2="276" y2="168" stroke="#254c3c" stroke-width="2"/>
+            <text x="52" y="103" fill="#34443d" font-size="11">측고 ${side.toFixed(1)}m</text>
+            <text x="52" y="66" fill="#34443d" font-size="11">동고 약 ${ridge.toFixed(1)}m</text>
+            <text x="160" y="190" text-anchor="middle" fill="#34443d" font-size="12">길이 ${length.toFixed(1)}m / 프레임 약 ${frameCount + 1}열 표현</text>
+          </svg>
+        </article>
+        <article class="drawing-card">
+          <h3>입면도</h3>
+          <svg viewBox="0 0 320 220" role="img" aria-label="입면도">
+            ${elevSpans}
+            ${spanLines.map(x => `<line x1="${x}" y1="170" x2="${x}" y2="98" stroke="#254c3c" stroke-width="1.5"/>`).join('')}
+            <line x1="35" y1="170" x2="285" y2="170" stroke="#254c3c" stroke-width="2"/>
+            <text x="160" y="202" text-anchor="middle" fill="#34443d" font-size="12">측고 ${side.toFixed(1)}m / 동고 약 ${ridge.toFixed(1)}m</text>
+            <text x="160" y="22" text-anchor="middle" fill="#34443d" font-size="12">${c.model.model_code || '-'} 기준 간이 표현</text>
+          </svg>
+        </article>
+      `;
+    }
+    function calc() {
+      const model = selectedModel();
+      const width = num('#width'), length = num('#length'), side = num('#side'), span = Math.max(1, num('#span'));
+      const area = width * length * span;
+      const pyeong = area / 3.3058;
+      const spacing = parseSpacingM(model.rafter_spec);
+      const heightAdj = sideHeightAdjustment(model, side, width, length, span);
+      const basePurlinRows = parsePurlinRows(model.purlin_or_beam_spec, model.facility_type);
+      const purlinRows = basePurlinRows + heightAdj.extraSideRows;
+      const rafterCount = (Math.ceil(length / spacing) + 1) * span;
+      const archLength = width * 1.32 + side * 2;
+      const rafterM = rafterCount * archLength;
+      const purlinM = purlinRows * length * span;
+      const coverM2 = heightAdj.inputCover;
+      const foundationM = model.facility_type === '연동형' ? length * (span + 1) : length * span * 2;
+      const clampCount = Math.round(rafterCount * purlinRows * 1.08);
+      const braceSet = Math.max(4, Math.ceil(span * length / 28 * heightAdj.braceFactor));
+      const motorCount = $('#autoVent').checked ? Math.max(2, span * 2) : 0;
+      const curtainM2 = $('#curtain').checked ? area : 0;
+      const screenM2 = $('#screen').checked ? area : 0;
+      const coverFilm = coverFilmInfo();
+      const coverUnit = Math.round(num('#coverUnit') * coverFilm.factor);
+      const bom = [
+        ['서까래 파이프', 'm', Math.round(rafterM), num('#pipeUnit'), '서까래 수 x 아치 길이'],
+        ['가로대/도리 파이프', 'm', Math.round(purlinM), num('#purlinUnit'), `${basePurlinRows}줄 + 측고보강 ${heightAdj.extraSideRows}줄`],
+        ['피복비닐/마감재', '㎡', Math.round(coverM2), coverUnit, `${coverFilm.name} / 지붕면 + 측벽면 + 여유율`],
+        ['기초/고정', 'm', Math.round(foundationM), num('#foundationUnit'), '기초 방식 미확정'],
+        ['내재해/일반 조리개', '개', clampCount, num('#clampUnit'), '교차점 추정'],
+        ['브레싱/버팀대', 'set', braceSet, 85000, '길이/동수 기준'],
+      ];
+      if (motorCount) bom.push(['권취/개폐 모터', '대', motorCount, num('#motorUnit'), '측창 좌우 기준']);
+      if (curtainM2) bom.push(['다겹보온커튼', '㎡', Math.round(curtainM2), num('#curtainUnit'), '원단/구동부 포함 임의']);
+      if (screenM2) bom.push(['차광/스크린', '㎡', Math.round(screenM2), num('#screenUnit'), '차광율 미확정']);
+      if ($('#irrigation').checked) bom.push(['관수/양액 제어 연동', '식', 1, 1800000, '기존 장비 연동 여부 미확정']);
+      const material = bom.reduce((s, r) => s + r[2] * r[3], 0);
+      const labor = material * num('#laborRate') / 100;
+      const mesh = (Number(model.mesh_hw_subtotal_krw_ex_vat) || 0);
+      const marginBase = material + labor + mesh;
+      const margin = marginBase * num('#marginRate') / 100;
+      const contingency = marginBase * num('#contingencyRate') / 100;
+      const supply = marginBase + margin + contingency;
+      const vat = supply * num('#vatRate') / 100;
+      return { model, width, length, side, span, area, pyeong, spacing, purlinRows, heightAdj, bom, material, labor, mesh, margin, contingency, supply, vat, coverFilm };
+    }
+    function render() {
+      const c = calc();
+      $('#modelOut').textContent = c.model.model_code || '-';
+      $('#areaOut').textContent = `${Math.round(c.area).toLocaleString('ko-KR')}㎡ / ${Math.round(c.pyeong).toLocaleString('ko-KR')}평`;
+      $('#supplyOut').textContent = shortWon(c.supply);
+      $('#vatOut').textContent = shortWon(c.supply + c.vat);
+      $('#customerTable').innerHTML = tableRows({
+        고객명: $('#customerName').value || '-',
+        연락처: $('#customerPhone').value || '-',
+        이메일: $('#customerEmail').value || '-',
+        시공지역: $('#projectRegion').value || '-',
+        문의메모: $('#leadMemo').value || '-'
+      });
+      const costRows = [
+        ['직접재료비', '물량 x 관리자 단가', c.material],
+        ['시공 노무/장비', `${num('#laborRate')}%`, c.labor],
+        ['MESH 환경제어 HW', c.model.mesh_template_case ? `템플릿 ${c.model.mesh_template_case}` : '선택 시 조정', c.mesh],
+        ['일반관리/마진', `${num('#marginRate')}%`, c.margin],
+        ['예비비', `${num('#contingencyRate')}%`, c.contingency],
+        ['공급가 합계', 'VAT 별도', c.supply],
+        ['부가세', `${num('#vatRate')}%`, c.vat],
+        ['총액', 'VAT 포함', c.supply + c.vat],
+      ];
+      $('#costTable').innerHTML = '<tr><th>구분</th><th>산출근거</th><th class="money">금액</th></tr>' +
+        costRows.map(r => `<tr><td data-label="구분">${r[0]}</td><td data-label="산출근거">${r[1]}</td><td class="money" data-label="금액">${won(r[2])}</td></tr>`).join('');
+      $('#drawingPreview').innerHTML = drawingCards(c);
+      $('#bomTable').innerHTML = '<tr><th>품목</th><th>단위</th><th class="money">수량</th><th class="money">단가</th><th class="money">금액</th></tr>' +
+        c.bom.map(r => `<tr><td data-label="품목">${r[0]}</td><td data-label="단위">${r[1]}</td><td class="money" data-label="수량">${r[2].toLocaleString('ko-KR')}</td><td class="money" data-label="단가">${won(r[3])}</td><td class="money" data-label="금액">${won(r[2] * r[3])}</td></tr>`).join('');
+      const assumptions = [
+        ['표준 모델', `${c.model.model_code || '-'} / ${c.model.facility_type || '-'}`],
+        ['내재해 기준', `적설 ${c.model.snow_depth_range_cm || '-'}, 풍속 ${c.model.wind_speed_range_m_s || '-'}`],
+        ['측고 보정', `표준 ${c.heightAdj.standardSide.toFixed(1)}m → 입력 ${c.side.toFixed(1)}m, 측면 보강 ${c.heightAdj.extraSideRows}줄 추가`],
+        ['피복 비닐', `${c.coverFilm.name} / ${c.coverFilm.note}`],
+        ['서까래 간격', `${c.spacing.toFixed(2)}m, 표준 미기재 시 임의 0.6m`],
+        ['가로대 줄 수', `${c.purlinRows}줄, 표준 미기재 시 유형별 임의값 + 측고 보정`],
+        ['관리자 메모', $('#memo').value || '-'],
+      ];
+      $('#assumptionTable').innerHTML = assumptions.map(r => `<tr><th>${r[0]}</th><td>${r[1]}</td></tr>`).join('');
+    }
+    function populateModels() {
+      const useful = data.filter(r => ['단동형','연동형','광폭형','자동화온실','과수형'].includes(r.facility_type));
+      $('#modelSelect').innerHTML = useful.map(r => `<option value="${r.model_code}">${r.model_code} · ${r.facility_type} · ${r.width_range_m || '-'}</option>`).join('');
+      const preferred = useful.find(r => r.model_code === '07-단동-3') || useful[0];
+      if (preferred) {
+        $('#modelSelect').value = preferred.model_code;
+        $('#width').value = rangeMid(preferred.width_range_m) || 7;
+        $('#side').value = rangeMid(preferred.side_height_range_m) || 1.4;
+      }
+    }
+    function copyReport() {
+      const c = calc();
+      const lines = [
+        `칼리온 온실 상세견적 초안`,
+        `고객명: ${$('#customerName').value || '-'}`,
+        `연락처: ${$('#customerPhone').value || '-'}`,
+        `이메일: ${$('#customerEmail').value || '-'}`,
+        `시공지역: ${$('#projectRegion').value || '-'}`,
+        `문의메모: ${$('#leadMemo').value || '-'}`,
+        '',
+        `표준모델: ${c.model.model_code}`,
+        `면적: ${Math.round(c.area).toLocaleString('ko-KR')}㎡`,
+        `공급가: ${won(c.supply)}`,
+        `VAT 포함: ${won(c.supply + c.vat)}`,
+        `피복 비닐: ${c.coverFilm.name} (${c.coverFilm.note})`,
+        '',
+        '물량내역:',
+        ...c.bom.map(r => `- ${r[0]}: ${r[2].toLocaleString('ko-KR')}${r[1]} x ${won(r[3])} = ${won(r[2] * r[3])}`)
+      ];
+      navigator.clipboard?.writeText(lines.join('\n'));
+    }
+    populateModels();
+    fields.forEach(id => {
+      $(id)?.addEventListener('input', render);
+      $(id)?.addEventListener('change', render);
+    });
+    $('#printBtn').addEventListener('click', () => window.print());
+    $('#copyText').addEventListener('click', copyReport);
+    render();
+  </script>
+</body>
+</html>
