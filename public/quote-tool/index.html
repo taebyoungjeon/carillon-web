@@ -355,6 +355,7 @@
       padding: 10px;
       break-inside: avoid;
     }
+    .drawing-card.featured { grid-column: 1 / -1; padding: 14px; }
     .drawing-card h4 { margin: 0 0 8px; font-size: 13px; }
     .drawing-card svg {
       width: 100%;
@@ -364,6 +365,45 @@
       border: 1px solid #edf1ed;
       border-radius: 6px;
     }
+    .annotated-diagram {
+      display: grid;
+      grid-template-columns: minmax(320px, 1fr) minmax(260px, .68fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+    .callout-list {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .callout-list li {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 8px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fbfcfa;
+      padding: 8px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .callout-num {
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: var(--green);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .callout-list b { display: block; margin-bottom: 2px; font-size: 12px; color: var(--ink); }
+    .callout-list span { color: var(--muted); }
     dialog {
       border: 0;
       padding: 0;
@@ -442,6 +482,7 @@
       .scene-wrap { height: 420px; }
       .metric-grid { grid-template-columns: 1fr 1fr; }
       .field-grid, .detail-grid, .option-grid, .drawing-grid { grid-template-columns: 1fr; }
+      .annotated-diagram { grid-template-columns: 1fr; }
       .scene-overlay h1 { font-size: 34px; }
       dialog { width: calc(100vw - 24px); }
       .modal-body { padding: 14px; max-height: calc(100dvh - 112px); }
@@ -762,7 +803,7 @@
       <div class="estimate-note">
         아래 상세 원가계산서와 물량내역서는 표준 모델 기반 초안입니다. 도면, 실제 기초 방식, 지역 운반비, 전기 인입, 커튼/스크린 제품 사양은 아직 미확정이므로 임의 가정 항목으로 표시했습니다.
       </div>
-      <h3>간이 배치도</h3>
+      <h3>간이 배치도 / 물량 항목 안내</h3>
       <div class="drawing-grid" id="drawingPreview"></div>
       <div class="detail-grid">
         <div>
@@ -971,6 +1012,94 @@
     function tableRows(obj) {
       return Object.entries(obj).map(([k,v]) => `<tr><th>${k}</th><td>${v || '-'}</td></tr>`).join('');
     }
+    function materialGuideCard(q) {
+      const width = n(els.width.value);
+      const length = n(els.length.value);
+      const span = Math.max(1, n(els.span.value));
+      const coverLabel = q.coverFilm.name;
+      const callouts = [
+        ['1', '서까래 파이프', '아치형 주 골조입니다. 길이와 간격에 따라 m 수량이 커집니다.'],
+        ['2', '가로대/도리 파이프', '서까래를 길이 방향으로 묶는 수평 파이프입니다. 줄 수와 길이에 비례합니다.'],
+        ['3', '피복비닐/마감재', `${coverLabel} 기준 피복 면적입니다. 온실 바닥면적보다 여유율이 붙습니다.`],
+        ['4', '기초/고정 구간', '측면과 전후면 하부를 고정하는 구간입니다. 지반과 기초 방식에 따라 달라집니다.'],
+        ['5', '내재해/일반 조리개', '파이프 교차부를 묶는 체결 부속입니다. 교차점이 많을수록 증가합니다.'],
+        ['6', '브레싱/버팀대', '강풍과 횡하중에 버티도록 대각 보강하는 부재입니다.'],
+        ['7', 'MESH 제어모듈', '센서와 개폐기, 제어반을 연결하는 환경제어 장치입니다.'],
+        ['8', '권취/개폐 모터', '측창·천창 비닐을 감고 여닫는 구동 장치입니다. 선택 사양에 따라 반영됩니다.'],
+        ['9', '다겹보온커튼', '상부 또는 내부에 설치되는 보온재입니다. 면적 기준으로 산정합니다.'],
+      ];
+      return `
+        <article class="drawing-card featured">
+          <h4>물량 항목 안내도</h4>
+          <div class="annotated-diagram">
+            <svg viewBox="0 0 760 430" role="img" aria-label="온실 물량 항목 안내도">
+              <defs>
+                <linearGradient id="coverGradient" x1="0" x2="1" y1="0" y2="1">
+                  <stop offset="0" stop-color="#e6f1ed" stop-opacity=".92"/>
+                  <stop offset="1" stop-color="#c9ddd3" stop-opacity=".58"/>
+                </linearGradient>
+                <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#1d2a24" flood-opacity=".16"/>
+                </filter>
+              </defs>
+              <rect x="0" y="0" width="760" height="430" fill="#fbfcfa"/>
+              <ellipse cx="376" cy="356" rx="300" ry="34" fill="#dfe7df"/>
+              <g filter="url(#softShadow)">
+                <polygon points="116,308 258,150 586,170 676,308" fill="url(#coverGradient)" stroke="#254c3c" stroke-width="3"/>
+                <polygon points="258,150 356,82 640,114 586,170" fill="#edf5f1" stroke="#254c3c" stroke-width="3"/>
+                <polygon points="116,308 258,150 356,82 228,276" fill="#d4e6dd" stroke="#254c3c" stroke-width="3"/>
+                <path d="M258 150 Q420 38 586 170" fill="none" stroke="#254c3c" stroke-width="5"/>
+                <path d="M208 262 Q364 96 632 208" fill="none" stroke="#254c3c" stroke-width="3"/>
+                <path d="M166 304 Q326 158 676 308" fill="none" stroke="#254c3c" stroke-width="3"/>
+                <line x1="166" y1="304" x2="676" y2="308" stroke="#254c3c" stroke-width="4"/>
+                <line x1="228" y1="276" x2="640" y2="114" stroke="#6d847a" stroke-width="3"/>
+                <line x1="142" y1="286" x2="626" y2="130" stroke="#6d847a" stroke-width="2"/>
+                <line x1="200" y1="248" x2="628" y2="250" stroke="#6d847a" stroke-width="2"/>
+                <line x1="258" y1="150" x2="116" y2="308" stroke="#254c3c" stroke-width="3"/>
+                <line x1="356" y1="82" x2="228" y2="276" stroke="#254c3c" stroke-width="3"/>
+                <line x1="476" y1="98" x2="402" y2="288" stroke="#254c3c" stroke-width="3"/>
+                <line x1="586" y1="170" x2="676" y2="308" stroke="#254c3c" stroke-width="3"/>
+                <line x1="212" y1="286" x2="302" y2="182" stroke="#a96f21" stroke-width="4"/>
+                <line x1="302" y1="182" x2="392" y2="286" stroke="#a96f21" stroke-width="4"/>
+                <rect x="386" y="135" width="168" height="20" rx="10" fill="#d7c28f" opacity=".72"/>
+                <rect x="612" y="260" width="36" height="34" rx="5" fill="#111"/>
+                <circle cx="648" cy="277" r="16" fill="#c6a15b" stroke="#111" stroke-width="4"/>
+                <rect x="482" y="290" width="54" height="44" rx="6" fill="#111"/>
+                <circle cx="508" cy="312" r="5" fill="#c6a15b"/>
+                <circle cx="258" cy="150" r="5" fill="#c6a15b"/>
+                <circle cx="356" cy="82" r="5" fill="#c6a15b"/>
+                <circle cx="476" cy="98" r="5" fill="#c6a15b"/>
+                <circle cx="586" cy="170" r="5" fill="#c6a15b"/>
+                <circle cx="302" cy="182" r="5" fill="#c6a15b"/>
+                <line x1="120" y1="326" x2="680" y2="330" stroke="#8b6b2d" stroke-width="8" stroke-linecap="round"/>
+              </g>
+              ${[
+                [1, 420, 74, 454, 96],
+                [2, 92, 212, 194, 244],
+                [3, 626, 96, 560, 148],
+                [4, 114, 374, 232, 328],
+                [5, 472, 46, 476, 98],
+                [6, 250, 128, 302, 182],
+                [7, 560, 358, 508, 312],
+                [8, 692, 260, 648, 277],
+                [9, 514, 164, 464, 145],
+              ].map(([num, x, y, tx, ty]) => `
+                <line x1="${x}" y1="${y}" x2="${tx}" y2="${ty}" stroke="#111" stroke-width="1.5" stroke-dasharray="4 4"/>
+                <circle cx="${x}" cy="${y}" r="14" fill="#111"/>
+                <text x="${x}" y="${y + 4}" text-anchor="middle" fill="#fff" font-size="12" font-weight="800">${num}</text>
+              `).join('')}
+              <text x="34" y="36" fill="#18211d" font-size="16" font-weight="800">폭 ${width.toFixed(1)}m x 길이 ${length.toFixed(1)}m x ${span}동 기준 예시</text>
+              <text x="34" y="60" fill="#66726c" font-size="12">번호를 물량내역서 품목과 대조해 보세요. 실제 위치와 수량은 현장 조건에 따라 달라집니다.</text>
+            </svg>
+            <ol class="callout-list">
+              ${callouts.map(([num, title, desc]) => `
+                <li><span class="callout-num">${num}</span><span><b>${title}</b>${desc}</span></li>
+              `).join('')}
+            </ol>
+          </div>
+        </article>
+      `;
+    }
     function drawingCards(q) {
       const width = n(els.width.value);
       const length = n(els.length.value);
@@ -992,6 +1121,7 @@
       }).join('');
       const sideFrames = sideFrameLines.map(x => `<line x1="${x}" y1="168" x2="${x}" y2="74" stroke="#8aa197" stroke-width="1"/>`).join('');
       return `
+        ${materialGuideCard(q)}
         <article class="drawing-card">
           <h4>평면도</h4>
           <svg viewBox="0 0 320 220" role="img" aria-label="평면도">
