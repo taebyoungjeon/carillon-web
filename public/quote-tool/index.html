@@ -371,6 +371,53 @@
       gap: 14px;
       align-items: stretch;
     }
+    .photo-guide {
+      overflow: hidden;
+      border: 1px solid #edf1ed;
+      border-radius: 8px;
+      background: #fbfcfa;
+    }
+    .photo-guide-frame {
+      position: relative;
+      overflow: hidden;
+      background: #fbfcfa;
+    }
+    .photo-guide img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .photo-guide .marker {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: #111;
+      color: #fff;
+      border: 2px solid #fff;
+      box-shadow: 0 6px 16px rgba(0,0,0,.24);
+      font-size: 12px;
+      font-weight: 800;
+      transform: translate(-50%, -50%);
+    }
+    .photo-guide .marker::after {
+      content: "";
+      position: absolute;
+      inset: -6px;
+      border-radius: inherit;
+      border: 1px solid rgba(198, 161, 91, .7);
+    }
+    .photo-guide-caption {
+      margin: 0;
+      border-top: 1px solid rgba(217,223,216,.9);
+      background: rgba(255,255,255,.92);
+      padding: 11px 12px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
     .callout-list {
       display: grid;
       gap: 8px;
@@ -1028,69 +1075,33 @@
         ['8', '권취/개폐 모터', '측창·천창 비닐을 감고 여닫는 구동 장치입니다. 선택 사양에 따라 반영됩니다.'],
         ['9', '다겹보온커튼', '상부 또는 내부에 설치되는 보온재입니다. 면적 기준으로 산정합니다.'],
       ];
+      const markers = [
+        ['1', 65, 15],
+        ['2', 34, 54],
+        ['3', 44, 34],
+        ['4', 18, 83],
+        ['5', 76, 24],
+        ['6', 58, 59],
+        ['7', 70, 72],
+        ['8', 92, 67],
+        ['9', 58, 33],
+      ];
       return `
         <article class="drawing-card featured">
           <h4>물량 항목 안내도</h4>
           <div class="annotated-diagram">
-            <svg viewBox="0 0 760 430" role="img" aria-label="온실 물량 항목 안내도">
-              <defs>
-                <linearGradient id="coverGradient" x1="0" x2="1" y1="0" y2="1">
-                  <stop offset="0" stop-color="#e6f1ed" stop-opacity=".92"/>
-                  <stop offset="1" stop-color="#c9ddd3" stop-opacity=".58"/>
-                </linearGradient>
-                <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#1d2a24" flood-opacity=".16"/>
-                </filter>
-              </defs>
-              <rect x="0" y="0" width="760" height="430" fill="#fbfcfa"/>
-              <ellipse cx="376" cy="356" rx="300" ry="34" fill="#dfe7df"/>
-              <g filter="url(#softShadow)">
-                <polygon points="116,308 258,150 586,170 676,308" fill="url(#coverGradient)" stroke="#254c3c" stroke-width="3"/>
-                <polygon points="258,150 356,82 640,114 586,170" fill="#edf5f1" stroke="#254c3c" stroke-width="3"/>
-                <polygon points="116,308 258,150 356,82 228,276" fill="#d4e6dd" stroke="#254c3c" stroke-width="3"/>
-                <path d="M258 150 Q420 38 586 170" fill="none" stroke="#254c3c" stroke-width="5"/>
-                <path d="M208 262 Q364 96 632 208" fill="none" stroke="#254c3c" stroke-width="3"/>
-                <path d="M166 304 Q326 158 676 308" fill="none" stroke="#254c3c" stroke-width="3"/>
-                <line x1="166" y1="304" x2="676" y2="308" stroke="#254c3c" stroke-width="4"/>
-                <line x1="228" y1="276" x2="640" y2="114" stroke="#6d847a" stroke-width="3"/>
-                <line x1="142" y1="286" x2="626" y2="130" stroke="#6d847a" stroke-width="2"/>
-                <line x1="200" y1="248" x2="628" y2="250" stroke="#6d847a" stroke-width="2"/>
-                <line x1="258" y1="150" x2="116" y2="308" stroke="#254c3c" stroke-width="3"/>
-                <line x1="356" y1="82" x2="228" y2="276" stroke="#254c3c" stroke-width="3"/>
-                <line x1="476" y1="98" x2="402" y2="288" stroke="#254c3c" stroke-width="3"/>
-                <line x1="586" y1="170" x2="676" y2="308" stroke="#254c3c" stroke-width="3"/>
-                <line x1="212" y1="286" x2="302" y2="182" stroke="#a96f21" stroke-width="4"/>
-                <line x1="302" y1="182" x2="392" y2="286" stroke="#a96f21" stroke-width="4"/>
-                <rect x="386" y="135" width="168" height="20" rx="10" fill="#d7c28f" opacity=".72"/>
-                <rect x="612" y="260" width="36" height="34" rx="5" fill="#111"/>
-                <circle cx="648" cy="277" r="16" fill="#c6a15b" stroke="#111" stroke-width="4"/>
-                <rect x="482" y="290" width="54" height="44" rx="6" fill="#111"/>
-                <circle cx="508" cy="312" r="5" fill="#c6a15b"/>
-                <circle cx="258" cy="150" r="5" fill="#c6a15b"/>
-                <circle cx="356" cy="82" r="5" fill="#c6a15b"/>
-                <circle cx="476" cy="98" r="5" fill="#c6a15b"/>
-                <circle cx="586" cy="170" r="5" fill="#c6a15b"/>
-                <circle cx="302" cy="182" r="5" fill="#c6a15b"/>
-                <line x1="120" y1="326" x2="680" y2="330" stroke="#8b6b2d" stroke-width="8" stroke-linecap="round"/>
-              </g>
-              ${[
-                [1, 420, 74, 454, 96],
-                [2, 92, 212, 194, 244],
-                [3, 626, 96, 560, 148],
-                [4, 114, 374, 232, 328],
-                [5, 472, 46, 476, 98],
-                [6, 250, 128, 302, 182],
-                [7, 560, 358, 508, 312],
-                [8, 692, 260, 648, 277],
-                [9, 514, 164, 464, 145],
-              ].map(([num, x, y, tx, ty]) => `
-                <line x1="${x}" y1="${y}" x2="${tx}" y2="${ty}" stroke="#111" stroke-width="1.5" stroke-dasharray="4 4"/>
-                <circle cx="${x}" cy="${y}" r="14" fill="#111"/>
-                <text x="${x}" y="${y + 4}" text-anchor="middle" fill="#fff" font-size="12" font-weight="800">${num}</text>
-              `).join('')}
-              <text x="34" y="36" fill="#18211d" font-size="16" font-weight="800">폭 ${width.toFixed(1)}m x 길이 ${length.toFixed(1)}m x ${span}동 기준 예시</text>
-              <text x="34" y="60" fill="#66726c" font-size="12">번호를 물량내역서 품목과 대조해 보세요. 실제 위치와 수량은 현장 조건에 따라 달라집니다.</text>
-            </svg>
+            <div class="photo-guide" role="img" aria-label="온실 물량 항목 안내 사진">
+              <div class="photo-guide-frame">
+                <img src="/images/greenhouse-material-guide.png" alt="온실 골조와 피복, 브레싱, 모터, 커튼 위치를 보여주는 예시 이미지">
+                ${markers.map(([num, x, y]) => `
+                  <span class="marker" style="left:${x}%;top:${y}%">${num}</span>
+                `).join('')}
+              </div>
+              <p class="photo-guide-caption">
+                폭 ${width.toFixed(1)}m x 길이 ${length.toFixed(1)}m x ${span}동 기준 예시입니다.
+                번호를 물량내역서 품목과 대조해 보세요. 실제 위치와 수량은 현장 조건에 따라 달라집니다.
+              </p>
+            </div>
             <ol class="callout-list">
               ${callouts.map(([num, title, desc]) => `
                 <li><span class="callout-num">${num}</span><span><b>${title}</b>${desc}</span></li>
