@@ -1,0 +1,1538 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>칼리온 온실 견적 시뮬레이터</title>
+  <script src="./greenhouse-data.js"></script>
+  <script defer src="./vendor/html2canvas.min.js"></script>
+  <script defer src="./vendor/jspdf.umd.min.js"></script>
+  <script defer>
+    window.addEventListener('DOMContentLoaded', function () {
+      document.documentElement.dataset.pdfReady = String(Boolean(window.html2canvas && window.jspdf?.jsPDF));
+    });
+  </script>
+  <style>
+    :root {
+      --bg: #f7f8f5;
+      --ink: #18211d;
+      --muted: #66726c;
+      --line: #d9dfd8;
+      --panel: #ffffff;
+      --field: #f0f4ef;
+      --green: #111111;
+      --green-2: #c6a15b;
+      --blue: #285b7a;
+      --amber: #a96f21;
+      --danger: #9d3c3c;
+      --shadow: 0 18px 48px rgba(35, 47, 40, .12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      letter-spacing: 0;
+    }
+    button, input, select, textarea { font: inherit; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      background: rgba(247, 248, 245, .94);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(10px);
+    }
+    .brand {
+      color: var(--ink);
+      font-weight: 800;
+      letter-spacing: .16em;
+      min-width: 0;
+      text-decoration: none;
+    }
+    .brand small {
+      color: var(--muted);
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0;
+      margin-top: 2px;
+    }
+    .top-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    .top-actions .ghost-btn, .top-actions .primary-btn { white-space: nowrap; }
+    .ghost-btn, .primary-btn, .icon-btn, .link-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      min-height: 38px;
+      padding: 0 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .primary-btn { background: var(--green); border-color: var(--green); color: #fff; }
+    .primary-btn:hover, .ghost-btn:hover, .link-btn:hover { border-color: var(--green-2); }
+    button:disabled, .primary-btn:disabled, .ghost-btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+    .icon-btn { width: 38px; padding: 0; display: grid; place-items: center; }
+    .layout {
+      min-height: calc(100vh - 58px);
+      display: grid;
+      grid-template-columns: minmax(320px, 390px) minmax(0, 1fr) minmax(320px, 390px);
+    }
+    aside {
+      border-right: 1px solid var(--line);
+      background: #fff;
+      padding: 18px;
+      overflow: auto;
+      max-height: calc(100vh - 58px);
+    }
+    .right {
+      border-left: 1px solid var(--line);
+      border-right: none;
+    }
+    main {
+      min-width: 0;
+      display: grid;
+      grid-template-rows: minmax(360px, 56vh) auto;
+    }
+    .scene-wrap {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(#dce9ef 0%, #eff4ee 54%, #d6dfcf 55%, #b9c7a8 100%);
+    }
+    #scene {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .scene-fallback {
+      position: absolute;
+      inset: 0;
+      display: none;
+    }
+    .scene-overlay {
+      position: absolute;
+      left: 22px;
+      bottom: 20px;
+      max-width: min(620px, calc(100% - 44px));
+      color: #13201a;
+      text-shadow: 0 1px 0 rgba(255,255,255,.45);
+    }
+    .scene-overlay h1 {
+      margin: 0 0 8px;
+      font-size: clamp(30px, 4vw, 54px);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+    .scene-overlay p { margin: 0; color: #34443d; max-width: 560px; }
+    .section {
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section h2, .section h3 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    label { font-size: 12px; color: var(--muted); }
+    input, select, textarea {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--field);
+      color: var(--ink);
+      padding: 8px 10px;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--green-2); background: #fff; }
+    textarea { min-height: 78px; resize: vertical; }
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .segmented button {
+      border: 1px solid var(--line);
+      background: var(--field);
+      min-height: 38px;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+    .segmented button.active { background: #f6efe1; border-color: var(--green-2); color: #3b2b10; font-weight: 700; }
+    .wizard-progress {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 4px;
+      margin: 0 0 14px;
+    }
+    .wizard-progress i {
+      display: block;
+      height: 4px;
+      border-radius: 999px;
+      background: #e5ebe6;
+    }
+    .wizard-progress i.done { background: var(--green-2); }
+    .wizard-step { display: none; }
+    .wizard-step.active, .wizard-complete .wizard-step { display: block; }
+    .wizard-step h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+    .wizard-help {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .step-nav {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .wizard-complete .step-nav { display: none; }
+    .review-panel {
+      display: none;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f9fbf8;
+      padding: 12px;
+      margin-top: 14px;
+    }
+    .wizard-complete .review-panel { display: block; }
+    .review-panel h3 { margin: 0 0 8px; font-size: 15px; }
+    .review-items { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+    .review-items button {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      padding: 9px 10px;
+      text-align: left;
+      cursor: pointer;
+      color: var(--ink);
+    }
+    .review-items span { color: var(--muted); }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 1px;
+      background: var(--line);
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .metric {
+      padding: 16px 18px;
+      background: #fff;
+      min-height: 86px;
+    }
+    .metric .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    .metric .value { font-size: 22px; font-weight: 750; }
+    .metric .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .spec-list { display: grid; gap: 9px; }
+    .spec-row {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .spec-row b { font-size: 13px; }
+    .spec-row span { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .result-title { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 12px;
+      background: #f7f1e5;
+      color: #7a5620;
+      white-space: nowrap;
+    }
+    .quote-total {
+      padding: 18px;
+      background: #fff;
+      border-bottom: 1px solid var(--line);
+    }
+    .quote-total .amount { font-size: 32px; font-weight: 800; margin: 6px 0; }
+    .quote-total .note { color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .line-items { display: grid; gap: 8px; }
+    .line-item {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+    }
+    .line-item span { color: var(--muted); }
+    .line-item strong { white-space: nowrap; }
+    .glossary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 10px;
+    }
+    .term {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+      min-height: 128px;
+    }
+    .term h4 { margin: 0 0 6px; font-size: 14px; }
+    .term p { margin: 0 0 8px; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .term small { color: var(--blue); }
+    .option-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 10px;
+      margin: 10px 0 16px;
+    }
+    .check-row {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--field);
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--ink);
+    }
+    .check-row input { width: auto; min-height: auto; margin: 0; }
+    .estimate-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 0; }
+    .estimate-note {
+      border: 1px solid #d9c9a8;
+      background: #fff8e8;
+      color: #654411;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 12px 0;
+    }
+    .assumption-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .drawing-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(220px, 1fr));
+      gap: 12px;
+      margin: 10px 0 18px;
+    }
+    .drawing-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+      break-inside: avoid;
+    }
+    .drawing-card h4 { margin: 0 0 8px; font-size: 13px; }
+    .drawing-card svg {
+      width: 100%;
+      height: auto;
+      display: block;
+      background: #fbfcfa;
+      border: 1px solid #edf1ed;
+      border-radius: 6px;
+    }
+    dialog {
+      border: 0;
+      padding: 0;
+      border-radius: 10px;
+      width: min(1080px, calc(100vw - 32px));
+      box-shadow: var(--shadow);
+    }
+    dialog::backdrop { background: rgba(20, 30, 24, .38); }
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .modal-body { padding: 18px; max-height: min(72vh, 720px); overflow: auto; }
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .mini-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .mini-table th, .mini-table td { border-bottom: 1px solid var(--line); padding: 9px 6px; text-align: left; vertical-align: top; }
+    .mini-table th { color: var(--muted); font-weight: 650; width: 38%; }
+    #costBreakdownTable th, #costBreakdownTable td, #bomTable th, #bomTable td { width: auto; }
+    #bomTable .num, #bomTable .money { text-align: right; white-space: nowrap; }
+    #bomTable th:first-child, #bomTable td:first-child { min-width: 86px; }
+    .form-note { margin: 10px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .pdf-export-root {
+      position: fixed;
+      left: -10000px;
+      top: 0;
+      width: 794px;
+      background: #fff;
+      color: var(--ink);
+      padding: 24px;
+      z-index: -1;
+    }
+    .pdf-export-root h1 {
+      margin: 0 0 16px;
+      font-size: 24px;
+      line-height: 1.25;
+    }
+    .pdf-export-root .modal-body {
+      max-height: none;
+      overflow: visible;
+      padding: 0;
+    }
+    .pdf-export-root .estimate-actions,
+    .pdf-export-root .pdf-exclude {
+      display: none !important;
+    }
+    .pdf-value {
+      display: inline-block;
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 8px 10px;
+      white-space: pre-wrap;
+    }
+    .footer-band {
+      padding: 20px 18px 28px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    @media (max-width: 1120px) {
+      .layout { grid-template-columns: 360px minmax(0, 1fr); }
+      .right { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); max-height: none; }
+    }
+    @media (max-width: 760px) {
+      .topbar { padding: 0 14px; }
+      .brand { max-width: 150px; line-height: 1.18; }
+      .top-actions { gap: 6px; }
+      .top-actions .ghost-btn, .top-actions .primary-btn { min-width: 54px; padding: 0 9px; }
+      .layout { display: block; }
+      aside { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
+      main { display: block; }
+      .scene-wrap { height: 420px; }
+      .metric-grid { grid-template-columns: 1fr 1fr; }
+      .field-grid, .detail-grid, .option-grid, .drawing-grid { grid-template-columns: 1fr; }
+      .scene-overlay h1 { font-size: 34px; }
+      dialog { width: calc(100vw - 24px); }
+      .modal-body { padding: 14px; max-height: calc(100dvh - 112px); }
+      #costBreakdownTable, #costBreakdownTable tbody, #costBreakdownTable tr,
+      #costBreakdownTable td, #costBreakdownTable th,
+      #bomTable, #bomTable tbody, #bomTable tr, #bomTable td, #bomTable th {
+        display: block;
+        width: 100%;
+      }
+      #costBreakdownTable tr:first-child, #bomTable tr:first-child { display: none; }
+      #costBreakdownTable tr, #bomTable tr {
+        border-bottom: 1px solid var(--line);
+        padding: 10px 0;
+      }
+      #costBreakdownTable td, #bomTable td {
+        border-bottom: 0;
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 4px 0;
+        text-align: right;
+        white-space: normal;
+        word-break: keep-all;
+        overflow-wrap: anywhere;
+      }
+      #costBreakdownTable td::before, #bomTable td::before {
+        content: attr(data-label);
+        flex: 0 0 82px;
+        color: var(--muted);
+        font-weight: 650;
+        text-align: left;
+      }
+      #costBreakdownTable td:first-child, #bomTable td:first-child {
+        font-weight: 750;
+        text-align: left;
+      }
+      #costBreakdownTable td:first-child::before, #bomTable td:first-child::before { font-weight: 650; }
+    }
+    @media print {
+      .topbar, .layout, .modal-head .icon-btn, .estimate-actions { display: none !important; }
+      dialog[open] {
+        position: static;
+        width: auto;
+        box-shadow: none;
+        border-radius: 0;
+      }
+      dialog::backdrop { display: none; }
+      .modal-body { max-height: none; overflow: visible; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="칼리온 홈페이지로 이동">
+      CARILLON
+      <small>온실 견적 시뮬레이터</small>
+    </a>
+    <div class="top-actions">
+      <a class="ghost-btn" href="/">홈으로</a>
+      <button class="ghost-btn" id="resetBtn">초기화</button>
+      <button class="primary-btn" id="openDetailTop">상세견적</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <section class="section wizard" id="quoteWizard">
+        <h2>견적 조건</h2>
+        <div class="wizard-progress" id="wizardProgress" aria-hidden="true"></div>
+        <div class="wizard-step active" data-step="0">
+          <h3>시설 형태</h3>
+          <p class="wizard-help">먼저 단동형인지 연동형인지 선택합니다. 선택하면 3D 화면이 바로 바뀌고 다음 단계로 이동합니다.</p>
+        <div class="segmented" id="typeTabs">
+          <button data-type="단동형" class="active">단동</button>
+          <button data-type="연동형">연동</button>
+          </div>
+        </div>
+        <div class="wizard-step" data-step="1">
+          <h3>시설 폭</h3>
+          <p class="wizard-help">한 동의 폭을 입력합니다. 연동형은 한 스팬 폭 기준입니다.</p>
+          <div class="field">
+            <label for="widthInput">시설 폭 m</label>
+            <input id="widthInput" type="number" min="3" max="30" step="0.1" value="7">
+          </div>
+        </div>
+        <div class="wizard-step" data-step="2">
+          <h3>시설 길이</h3>
+          <p class="wizard-help">실제 시공하려는 온실의 길이를 입력합니다.</p>
+          <div class="field">
+            <label for="lengthInput">시설 길이 m</label>
+            <input id="lengthInput" type="number" min="10" max="200" step="1" value="97">
+          </div>
+        </div>
+        <div class="wizard-step" data-step="3">
+          <h3>측고</h3>
+          <p class="wizard-help">측고가 높아지면 골조, 피복, 브레싱, 시공비가 함께 증가합니다.</p>
+          <div class="field">
+            <label for="sideInput">측고 m</label>
+            <input id="sideInput" type="number" min="0.8" max="7" step="0.1" value="1.4">
+          </div>
+        </div>
+        <div class="wizard-step" data-step="4">
+          <h3>동수/연동 수</h3>
+          <p class="wizard-help">단동은 동수, 연동은 스팬 수 기준입니다.</p>
+          <div class="field">
+            <label for="spanInput">동수/연동 수</label>
+            <input id="spanInput" type="number" min="1" max="12" step="1" value="1">
+          </div>
+        </div>
+        <div class="wizard-step" data-step="5">
+          <h3>내재해 기준</h3>
+          <p class="wizard-help">요구 적설심과 풍속을 넣으면 가까운 표준 규격을 다시 찾습니다.</p>
+          <div class="field-grid">
+          <div class="field">
+            <label for="snowInput">요구 적설심 cm</label>
+            <input id="snowInput" type="number" min="20" max="80" step="1" value="35">
+          </div>
+          <div class="field">
+            <label for="windInput">요구 풍속 m/s</label>
+            <input id="windInput" type="number" min="20" max="50" step="1" value="30">
+          </div>
+        </div>
+        </div>
+        <div class="wizard-step" data-step="6">
+          <h3>작목/용도</h3>
+          <p class="wizard-help">작목은 이후 커튼, 스크린, 관수 옵션 추천 기준으로 사용합니다.</p>
+        <div class="field">
+          <label for="cropInput">작목/용도</label>
+          <select id="cropInput">
+            <option>딸기</option>
+            <option>토마토</option>
+            <option>엽채류</option>
+            <option>육묘</option>
+            <option>포도</option>
+            <option>버섯</option>
+            <option>기타</option>
+          </select>
+        </div>
+        </div>
+        <div class="wizard-step" data-step="7">
+          <h3>피복 비닐</h3>
+          <p class="wizard-help">현재 상세 규격 전에는 장수비닐을 기본 임의 사양으로 둡니다. PO필름 선택 시 피복비를 임의 보정합니다.</p>
+          <div class="field">
+            <label for="coverFilmSelect">피복 비닐</label>
+            <select id="coverFilmSelect">
+              <option value="장수비닐">장수비닐</option>
+              <option value="PO필름">PO필름</option>
+            </select>
+          </div>
+        </div>
+        <div class="wizard-step" data-step="8">
+          <h3>MESH 환경제어</h3>
+          <p class="wizard-help">제어 채널과 센서 포인트를 입력하면 환경제어 HW와 구독료가 산출됩니다.</p>
+          <div class="field-grid">
+            <div class="field">
+              <label for="controlInput">제어 채널</label>
+              <input id="controlInput" type="number" min="0" max="80" value="6">
+            </div>
+            <div class="field">
+              <label for="sensorInput">센서 포인트</label>
+              <input id="sensorInput" type="number" min="0" max="40" value="1">
+            </div>
+          </div>
+          <div class="field">
+            <label for="hubSelect">허브 선택</label>
+            <select id="hubSelect">
+              <option value="auto">자동 추천</option>
+              <option value="basic">Basic Hub</option>
+              <option value="ai">AI Hub</option>
+            </select>
+          </div>
+        </div>
+        <div class="wizard-step" data-step="9">
+          <h3>추가 요청</h3>
+          <p class="wizard-help">필요한 추가 사양을 선택합니다. 선택값은 상세내역의 물량과 금액에 반영됩니다.</p>
+          <div class="option-grid request-options">
+            <label class="check-row"><input type="checkbox" id="reqAutoVent" checked> 측창 자동개폐</label>
+            <label class="check-row"><input type="checkbox" id="reqCurtain"> 다겹보온커튼</label>
+            <label class="check-row"><input type="checkbox" id="reqScreen"> 차광/스크린</label>
+            <label class="check-row"><input type="checkbox" id="reqIrrigation"> 관수/양액 연동</label>
+          </div>
+        </div>
+        <div class="step-nav">
+          <button class="ghost-btn" id="prevStep" type="button">이전</button>
+          <button class="primary-btn" id="nextStep" type="button">다음</button>
+        </div>
+        <div class="review-panel">
+          <h3>선택 조건</h3>
+          <div class="review-items" id="reviewItems"></div>
+          <button class="ghost-btn" id="collapseWizard" type="button" style="width:100%;margin-top:10px">단계별로 다시 보기</button>
+        </div>
+      </section>
+    </aside>
+
+    <main>
+      <section class="scene-wrap">
+        <canvas id="scene"></canvas>
+        <canvas id="fallbackScene" class="scene-fallback"></canvas>
+        <div class="scene-overlay">
+          <h1 id="sceneTitle">단동형 7m x 97m</h1>
+          <p id="sceneText">입력 조건에 맞춰 표준 규격과 공사비 기준을 실시간으로 매칭합니다.</p>
+        </div>
+      </section>
+      <section class="metric-grid">
+        <div class="metric"><div class="label">추천 표준규격</div><div class="value" id="modelMetric">-</div><div class="sub" id="modelSub">공개 표준규격 + 설계자료 기준</div></div>
+        <div class="metric"><div class="label">예상 면적</div><div class="value" id="areaMetric">-</div><div class="sub">폭 x 길이 x 동수</div></div>
+        <div class="metric"><div class="label">초기 투자 범위</div><div class="value" id="totalMetric">-</div><div class="sub">VAT 별도, 참고가</div></div>
+        <div class="metric"><div class="label">월 구독</div><div class="value" id="subMetric">-</div><div class="sub">MESH 선택 시</div></div>
+      </section>
+      <section class="section">
+        <h3>부속 설명</h3>
+        <div class="glossary" id="glossary"></div>
+      </section>
+    </main>
+
+    <aside class="right">
+      <section class="quote-total">
+        <div class="result-title">
+          <div>
+            <div class="badge" id="statusBadge">표준 매칭</div>
+            <div class="amount" id="quoteAmount">-</div>
+          </div>
+          <button class="primary-btn" id="openDetailSide">상세견적</button>
+        </div>
+        <div class="note" id="quoteNote">구조물 기준 공사비와 MESH 환경제어 옵션을 분리해 보여줍니다.</div>
+      </section>
+      <section class="section">
+        <h3>추천 모델 스펙</h3>
+        <div class="spec-list" id="specList"></div>
+      </section>
+      <section class="section">
+        <h3>견적 구성</h3>
+        <div class="line-items" id="lineItems"></div>
+      </section>
+      <section class="footer-band">
+        이 화면은 견적 상담을 시작하기 위한 참고 산출입니다. 최종 견적은 현장 실사, 지역별 적설/풍속, 지반, 전기 인입, 배선 거리, 보온/스크린 사양, 정부지원사업 조건 확인 후 확정됩니다.
+      </section>
+    </aside>
+  </div>
+
+  <iframe name="leadSubmitFrame" hidden title="견적 문의 전송"></iframe>
+  <dialog id="leadDialog">
+    <form id="leadForm" action="https://formsubmit.co/tbj@carillon.kr" method="POST" target="leadSubmitFrame">
+      <div class="modal-head">
+        <strong>상세견적 문의하기</strong>
+        <button class="icon-btn" id="closeLead" type="button" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" name="_subject" value="칼리온 온실 상세견적 문의">
+        <input type="hidden" name="_captcha" value="false">
+        <input type="hidden" name="_template" value="table">
+        <input type="hidden" name="quote_summary" id="leadQuoteSummary">
+        <input type="hidden" name="quote_detail" id="leadQuoteDetail">
+        <input type="hidden" name="page_url" id="leadPageUrl">
+        <div class="detail-grid">
+          <div class="field">
+            <label for="leadEmail">이메일</label>
+            <input id="leadEmail" name="email" type="email" required placeholder="example@email.com">
+          </div>
+          <div class="field">
+            <label for="leadPhone">핸드폰 번호</label>
+            <input id="leadPhone" name="phone" type="tel" required pattern="[0-9+\-\s]{8,20}" placeholder="010-0000-0000">
+          </div>
+        </div>
+        <div class="field">
+          <label for="leadMemo">기타 요구사항</label>
+          <textarea id="leadMemo" name="extra_request" required placeholder="예: 희망 시공지역, 필요한 옵션, 현장 조건"></textarea>
+        </div>
+        <div class="field">
+          <label>상담 희망</label>
+          <div class="option-grid">
+            <label class="check-row"><input type="radio" name="consultation_wanted" value="yes" required> 예</label>
+            <label class="check-row"><input type="radio" name="consultation_wanted" value="no" required> 아니오</label>
+          </div>
+        </div>
+        <p class="form-note">입력 내용과 견적 조건은 칼리온으로 전송됩니다. 제출 후 상세견적 내역을 볼 수 있습니다.</p>
+        <div class="estimate-actions">
+          <button class="primary-btn" type="submit">제출하고 상세내역 보기</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="detailDialog">
+    <div class="modal-head">
+      <strong>상세내역</strong>
+      <button class="icon-btn" id="closeDetail" aria-label="닫기">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-grid">
+        <div>
+          <h3>입력 조건</h3>
+          <table class="mini-table" id="inputTable"></table>
+        </div>
+        <div>
+          <h3>표준/견적 근거</h3>
+          <table class="mini-table" id="basisTable"></table>
+        </div>
+      </div>
+      <h3>상세 요청 메시지</h3>
+      <textarea id="inquiryText"></textarea>
+      <h3>고객 조정 옵션</h3>
+      <div class="option-grid">
+        <label class="check-row"><input type="checkbox" id="optAutoVent" checked> 측창 자동개폐</label>
+        <label class="check-row"><input type="checkbox" id="optCurtain"> 다겹보온커튼</label>
+        <label class="check-row"><input type="checkbox" id="optScreen"> 차광/스크린</label>
+        <label class="check-row"><input type="checkbox" id="optIrrigation"> 관수/양액 연동</label>
+        <div class="field">
+          <label for="optStructureFactor">구조/현장 보정 %</label>
+          <input id="optStructureFactor" type="number" min="-20" max="40" step="5" value="0">
+        </div>
+        <div class="field">
+          <label for="optInstallFactor">설치/배선 보정 %</label>
+          <input id="optInstallFactor" type="number" min="-20" max="50" step="5" value="0">
+        </div>
+      </div>
+      <div class="estimate-note">
+        아래 상세 원가계산서와 물량내역서는 표준 모델 기반 초안입니다. 도면, 실제 기초 방식, 지역 운반비, 전기 인입, 커튼/스크린 제품 사양은 아직 미확정이므로 임의 가정 항목으로 표시했습니다.
+      </div>
+      <h3>간이 배치도</h3>
+      <div class="drawing-grid" id="drawingPreview"></div>
+      <div class="detail-grid">
+        <div>
+          <h3>상세 원가계산서 초안</h3>
+          <table class="mini-table" id="costBreakdownTable"></table>
+        </div>
+        <div>
+          <h3>물량내역서 초안</h3>
+          <table class="mini-table" id="bomTable"></table>
+        </div>
+      </div>
+      <h3>임의 가정 및 옵션</h3>
+      <ul class="assumption-list" id="assumptionList"></ul>
+      <div class="estimate-actions">
+        <button class="primary-btn" id="printDetail" type="button">PDF 다운로드</button>
+      </div>
+      <p class="pdf-exclude" style="color:var(--muted);font-size:13px;line-height:1.5">이 산출 내역은 상담을 위한 참고 자료입니다. 최종 견적은 현장 실사와 설계 조건 확인 후 확정됩니다.</p>
+    </div>
+  </dialog>
+
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.165.0/build/three.module.js';
+
+    const data = window.GREENHOUSE_MASTER || [];
+    const glossary = window.COMPONENT_GLOSSARY || [];
+    const els = {
+      width: document.querySelector('#widthInput'),
+      length: document.querySelector('#lengthInput'),
+      side: document.querySelector('#sideInput'),
+      span: document.querySelector('#spanInput'),
+      snow: document.querySelector('#snowInput'),
+      wind: document.querySelector('#windInput'),
+      crop: document.querySelector('#cropInput'),
+      coverFilm: document.querySelector('#coverFilmSelect'),
+      control: document.querySelector('#controlInput'),
+      sensor: document.querySelector('#sensorInput'),
+      hub: document.querySelector('#hubSelect')
+    };
+    let facilityType = '단동형';
+    let selected = null;
+    let wizardStep = 0;
+    let wizardComplete = false;
+    let leadSubmitted = false;
+    let leadInfo = {};
+    const wizardMaxStep = 9;
+
+    function n(v) { return Number(String(v || '').replace(/[^\d.-]/g, '')) || 0; }
+    function won(v) {
+      if (!isFinite(v) || v <= 0) return '-';
+      if (v >= 100000000) return (v / 100000000).toFixed(1).replace('.0','') + '억원';
+      if (v >= 10000) return Math.round(v / 10000).toLocaleString('ko-KR') + '만원';
+      return Math.round(v).toLocaleString('ko-KR') + '원';
+    }
+    function exactWon(v) {
+      if (!isFinite(v) || v <= 0) return '-';
+      return Math.round(v).toLocaleString('ko-KR') + '원';
+    }
+    function stepValue(step) {
+      if (step === 0) return facilityType.replace('형','');
+      if (step === 1) return `${els.width.value}m`;
+      if (step === 2) return `${els.length.value}m`;
+      if (step === 3) return `${els.side.value}m`;
+      if (step === 4) return `${els.span.value}`;
+      if (step === 5) return `적설 ${els.snow.value}cm / 풍속 ${els.wind.value}m/s`;
+      if (step === 6) return els.crop.value;
+      if (step === 7) return els.coverFilm.value;
+      if (step === 8) return `${els.control.value}ch / 센서 ${els.sensor.value}점`;
+      if (step === 9) return requestLabels().join(', ') || '추가 선택 없음';
+      return '-';
+    }
+    function stepLabel(step) {
+      return ['시설 형태','시설 폭','시설 길이','측고','동수/연동 수','내재해 기준','작목/용도','피복 비닐','MESH 환경제어','추가 요청'][step] || '-';
+    }
+    function currentStepValid() {
+      if (wizardStep === 1) return n(els.width.value) >= 3;
+      if (wizardStep === 2) return n(els.length.value) >= 10;
+      if (wizardStep === 3) return n(els.side.value) >= 0.8;
+      if (wizardStep === 4) return n(els.span.value) >= 1;
+      if (wizardStep === 5) return n(els.snow.value) >= 20 && n(els.wind.value) >= 20;
+      if (wizardStep === 8) return n(els.control.value) >= 0 && n(els.sensor.value) >= 0;
+      return true;
+    }
+    function updateWizard() {
+      const wizard = document.querySelector('#quoteWizard');
+      if (!wizard) return;
+      wizard.classList.toggle('wizard-complete', wizardComplete);
+      document.querySelectorAll('.wizard-step').forEach(step => {
+        step.classList.toggle('active', Number(step.dataset.step) === wizardStep);
+      });
+      document.querySelector('#wizardProgress').innerHTML = Array.from({ length: wizardMaxStep + 1 }, (_, i) => `<i class="${i <= wizardStep || wizardComplete ? 'done' : ''}"></i>`).join('');
+      document.querySelector('#prevStep').disabled = wizardStep === 0;
+      document.querySelector('#nextStep').disabled = !currentStepValid();
+      document.querySelector('#nextStep').textContent = wizardStep === wizardMaxStep ? '견적 확인' : '다음';
+      document.querySelector('#openDetailTop').disabled = !wizardComplete;
+      document.querySelector('#openDetailSide').disabled = !wizardComplete;
+      const reviewRows = Array.from({ length: wizardMaxStep + 1 }, (_, i) => `
+        <button type="button" data-jump="${i}"><b>${stepLabel(i)}</b><span>${stepValue(i)}</span></button>
+      `).join('');
+      document.querySelector('#reviewItems').innerHTML = reviewRows;
+    }
+    function rangeMid(text) {
+      const nums = String(text || '').match(/\d+(?:\.\d+)?/g);
+      if (!nums) return 0;
+      return nums.map(Number).reduce((a,b)=>a+b,0) / nums.length;
+    }
+    function estimatedRidge(row, inputSide, width) {
+      const standardSide = rangeMid(row?.side_height_range_m);
+      const standardRidge = rangeMid(row?.ridge_height_range_m);
+      if (standardRidge) return standardRidge + (standardSide ? inputSide - standardSide : 0);
+      return Math.max(inputSide + 1.2, inputSide + width * 0.28);
+    }
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+    function sideHeightAdjustment(row, inputSide, width, length, span, type) {
+      const standardSide = rangeMid(row.side_height_range_m) || inputSide || 1.5;
+      const delta = inputSide - standardSide;
+      const inputArch = width * 1.32 + inputSide * 2;
+      const standardArch = width * 1.32 + standardSide * 2;
+      const frameFactor = standardArch ? inputArch / standardArch : 1;
+      const standardCover = width * length * span * 1.18 + (length * 2 + width * span * 2) * standardSide * 0.55;
+      const inputCover = width * length * span * 1.18 + (length * 2 + width * span * 2) * inputSide * 0.55;
+      const coverFactor = standardCover ? inputCover / standardCover : 1;
+      const braceFactor = 1 + Math.max(0, delta) * (type === '연동형' ? 0.09 : 0.07);
+      const laborFactor = 1 + Math.max(0, delta) * 0.06;
+      const highSidePremium = inputSide > 4 ? 0.08 : 0;
+      const costFactor = clamp(
+        frameFactor * 0.42 + coverFactor * 0.20 + braceFactor * 0.18 + laborFactor * 0.20 + highSidePremium,
+        0.82,
+        1.85
+      );
+      const extraSideRows = Math.max(0, Math.ceil(Math.max(0, delta) / 0.8) * 2);
+      return { standardSide, delta, frameFactor, coverFactor, costFactor, extraSideRows, inputCover };
+    }
+    function modelScore(row, width, side, snow, wind) {
+      if (row.facility_type !== facilityType) return -1e9;
+      const w = rangeMid(row.width_range_m);
+      const s = rangeMid(row.side_height_range_m);
+      const snowMax = Math.max(...(String(row.snow_depth_range_cm).match(/\d+(?:\.\d+)?/g)||[0]).map(Number));
+      const windMax = Math.max(...(String(row.wind_speed_range_m_s).match(/\d+(?:\.\d+)?/g)||[0]).map(Number));
+      let score = 1000;
+      score -= Math.abs(w - width) * 80;
+      if (s) score -= Math.abs(s - side) * 30;
+      if (snowMax < snow) score -= (snow - snowMax) * 80;
+      if (windMax < wind) score -= (wind - windMax) * 90;
+      if (row.akaf_total_construction_cost_krw) score += 80;
+      if (row.has_design_drawings === 'Y') score += 40;
+      return score;
+    }
+    function pickModel() {
+      const width = n(els.width.value), side = n(els.side.value), snow = n(els.snow.value), wind = n(els.wind.value);
+      return data.slice().sort((a,b)=>modelScore(b,width,side,snow,wind)-modelScore(a,width,side,snow,wind))[0] || data[0];
+    }
+    function meshQuote(areaPyeong) {
+      const control = n(els.control.value);
+      const sensors = n(els.sensor.value);
+      const batteries = sensors;
+      const totalModules = control + sensors + batteries;
+      const forceAi = els.hub.value === 'ai' || (els.hub.value === 'auto' && (areaPyeong > 300 || facilityType !== '단동형'));
+      const hub = els.hub.value === 'basic' ? 510000 : forceAi ? 1750000 : 510000;
+      const cb = control <= 6 ? 730000 : control <= 20 ? 1640000 : 2730000;
+      const hw = hub + cb + control * 145000 + sensors * 195000 + batteries * 195000;
+      const pro = areaPyeong > 1000 || totalModules > 80;
+      const monthly = pro ? 100000 + Math.max(0, totalModules - 80) * 1500 : 30000 + Math.max(0, totalModules - 20) * 2000;
+      return { hw, monthly, plan: pro ? 'Pro' : 'Standard', totalModules };
+    }
+    function installRange(areaPyeong) {
+      if (areaPyeong <= 300) return [400000, 700000];
+      if (areaPyeong <= 1000) return [700000, 1500000];
+      return [1500000, 3500000];
+    }
+    function coverFilmInfo() {
+      const name = els.coverFilm?.value || '장수비닐';
+      if (name === 'PO필름') {
+        return { name, factor: 1.18, note: 'PO필름 선택, 피복비 +18% 임의 보정' };
+      }
+      return { name: '장수비닐', factor: 1, note: '기본 임의 사양' };
+    }
+    function estimate() {
+      selected = pickModel();
+      const width = n(els.width.value), length = n(els.length.value), span = n(els.span.value), side = n(els.side.value);
+      const area = width * length * Math.max(1, span);
+      const pyeong = area / 3.3058;
+      let structure = 0;
+      const costArea = n(selected.akaf_cost_area_m2);
+      const totalCost = n(selected.akaf_total_construction_cost_krw);
+      if (costArea && totalCost) structure = totalCost / costArea * area;
+      else {
+        const fallback = facilityType === '단동형' ? 95000 : facilityType === '연동형' ? 390000 : 280000;
+        structure = fallback * pyeong;
+      }
+      const heightAdj = sideHeightAdjustment(selected, side, width, length, Math.max(1, span), facilityType);
+      structure *= heightAdj.costFactor;
+      const coverFilm = coverFilmInfo();
+      structure *= 1 + (coverFilm.factor - 1) * 0.14;
+      const mesh = meshQuote(pyeong);
+      const [rawInstallMin, rawInstallMax] = installRange(pyeong);
+      const installFactor = 1 + Math.max(0, heightAdj.delta) * 0.04;
+      const installMin = rawInstallMin * installFactor;
+      const installMax = rawInstallMax * installFactor;
+      const initialMin = structure + mesh.hw + installMin;
+      const initialMax = structure + mesh.hw + installMax;
+      return { selected, area, pyeong, structure, mesh, installMin, installMax, initialMin, initialMax, heightAdj, coverFilm };
+    }
+    function row(label, value) {
+      return `<div class="spec-row"><b>${label}</b><span>${value || '-'}</span></div>`;
+    }
+    function tableRows(obj) {
+      return Object.entries(obj).map(([k,v]) => `<tr><th>${k}</th><td>${v || '-'}</td></tr>`).join('');
+    }
+    function drawingCards(q) {
+      const width = n(els.width.value);
+      const length = n(els.length.value);
+      const side = n(els.side.value);
+      const span = Math.max(1, n(els.span.value));
+      const totalWidth = width * span;
+      const ridge = estimatedRidge(q.selected, side, width);
+      const frameCount = Math.min(10, Math.max(4, Math.round(length / 12)));
+      const spanLines = Array.from({length: span + 1}, (_, i) => 40 + i * (240 / span));
+      const frameLines = Array.from({length: frameCount + 1}, (_, i) => 40 + i * (150 / frameCount));
+      const sideFrameLines = Array.from({length: frameCount + 1}, (_, i) => 44 + i * (232 / frameCount));
+      const planSpanLines = spanLines.map(x => `<line x1="${x}" y1="30" x2="${x}" y2="180" stroke="#8aa197" stroke-width="1"/>`).join('');
+      const planFrameLines = frameLines.map(y => `<line x1="40" y1="${y}" x2="280" y2="${y}" stroke="#d0d9d4" stroke-width="1"/>`).join('');
+      const elevSpans = Array.from({length: span}, (_, i) => {
+        const x0 = 35 + i * (250 / span);
+        const sw = 250 / span;
+        const roof = `M ${x0} 170 L ${x0} 100 Q ${x0 + sw / 2} ${40} ${x0 + sw} 100 L ${x0 + sw} 170`;
+        return `<path d="${roof}" fill="rgba(204,230,220,.55)" stroke="#254c3c" stroke-width="2"/>`;
+      }).join('');
+      const sideFrames = sideFrameLines.map(x => `<line x1="${x}" y1="168" x2="${x}" y2="74" stroke="#8aa197" stroke-width="1"/>`).join('');
+      return `
+        <article class="drawing-card">
+          <h4>평면도</h4>
+          <svg viewBox="0 0 320 220" role="img" aria-label="평면도">
+            <rect x="40" y="30" width="240" height="150" fill="rgba(204,230,220,.38)" stroke="#254c3c" stroke-width="2"/>
+            ${planSpanLines}${planFrameLines}
+            <text x="160" y="205" text-anchor="middle" fill="#34443d" font-size="12">전체 폭 ${totalWidth.toFixed(1)}m = ${width.toFixed(1)}m x ${span}동</text>
+            <text x="292" y="108" fill="#34443d" font-size="12" transform="rotate(90 292 108)">길이 ${length.toFixed(1)}m</text>
+          </svg>
+        </article>
+        <article class="drawing-card">
+          <h4>측면도</h4>
+          <svg viewBox="0 0 320 220" role="img" aria-label="측면도">
+            <rect x="44" y="112" width="232" height="56" fill="rgba(204,230,220,.38)" stroke="#254c3c" stroke-width="2"/>
+            <rect x="44" y="74" width="232" height="38" fill="rgba(204,230,220,.22)" stroke="#254c3c" stroke-width="2"/>
+            <line x1="44" y1="112" x2="276" y2="112" stroke="#254c3c" stroke-width="1.5" stroke-dasharray="4 4"/>
+            ${sideFrames}
+            <line x1="44" y1="168" x2="276" y2="168" stroke="#254c3c" stroke-width="2"/>
+            <text x="52" y="103" fill="#34443d" font-size="11">측고 ${side.toFixed(1)}m</text>
+            <text x="52" y="66" fill="#34443d" font-size="11">동고 약 ${ridge.toFixed(1)}m</text>
+            <text x="160" y="190" text-anchor="middle" fill="#34443d" font-size="12">길이 ${length.toFixed(1)}m / 프레임 약 ${frameCount + 1}열 표현</text>
+          </svg>
+        </article>
+        <article class="drawing-card">
+          <h4>입면도</h4>
+          <svg viewBox="0 0 320 220" role="img" aria-label="입면도">
+            ${elevSpans}
+            ${spanLines.map(x => `<line x1="${x}" y1="170" x2="${x}" y2="98" stroke="#254c3c" stroke-width="1.5"/>`).join('')}
+            <line x1="35" y1="170" x2="285" y2="170" stroke="#254c3c" stroke-width="2"/>
+            <text x="160" y="202" text-anchor="middle" fill="#34443d" font-size="12">측고 ${side.toFixed(1)}m / 동고 약 ${ridge.toFixed(1)}m</text>
+            <text x="160" y="22" text-anchor="middle" fill="#34443d" font-size="12">${q.selected.model_code} 기준 간이 표현</text>
+          </svg>
+        </article>
+      `;
+    }
+    function parseSpacingM(spec) {
+      const m = String(spec || '').match(/@(\d+(?:\.\d+)?)/);
+      if (!m) return 0.6;
+      const raw = Number(m[1]);
+      return raw > 5 ? raw / 100 : raw;
+    }
+    function parsePurlinRows(spec, type) {
+      const m = String(spec || '').match(/(\d+)\s*개/);
+      if (m) return Number(m[1]);
+      if (type === '연동형') return 9;
+      if (type === '광폭형') return 11;
+      return 7;
+    }
+    function requestLabels() {
+      const requests = [
+        ['#reqAutoVent', '측창 자동개폐'],
+        ['#reqCurtain', '다겹보온커튼'],
+        ['#reqScreen', '차광/스크린'],
+        ['#reqIrrigation', '관수/양액 연동']
+      ];
+      return requests.filter(([id]) => document.querySelector(id)?.checked).map(([, label]) => label);
+    }
+    function syncRequestOptionsToDetail() {
+      const pairs = [
+        ['#reqAutoVent', '#optAutoVent'],
+        ['#reqCurtain', '#optCurtain'],
+        ['#reqScreen', '#optScreen'],
+        ['#reqIrrigation', '#optIrrigation']
+      ];
+      pairs.forEach(([source, target]) => {
+        const sourceEl = document.querySelector(source);
+        const targetEl = document.querySelector(target);
+        if (sourceEl && targetEl) targetEl.checked = sourceEl.checked;
+      });
+    }
+    function readDetailOptions() {
+      const byId = id => document.querySelector(id);
+      return {
+        autoVent: byId('#optAutoVent')?.checked ?? true,
+        curtain: byId('#optCurtain')?.checked ?? false,
+        screen: byId('#optScreen')?.checked ?? false,
+        irrigation: byId('#optIrrigation')?.checked ?? false,
+        structureFactor: n(byId('#optStructureFactor')?.value),
+        installFactor: n(byId('#optInstallFactor')?.value)
+      };
+    }
+    function detailedEstimate(q, opts = readDetailOptions()) {
+      const width = n(els.width.value);
+      const length = n(els.length.value);
+      const span = Math.max(1, n(els.span.value));
+      const side = n(els.side.value);
+      const spacing = parseSpacingM(q.selected.rafter_spec);
+      const basePurlinRows = parsePurlinRows(q.selected.purlin_or_beam_spec, facilityType);
+      const purlinRows = basePurlinRows + q.heightAdj.extraSideRows;
+      const rafterPerSpan = Math.ceil(length / spacing) + 1;
+      const rafterCount = rafterPerSpan * span;
+      const archLength = width * 1.32 + side * 2;
+      const rafterPipeM = rafterCount * archLength;
+      const purlinPipeM = purlinRows * length * span;
+      const coverM2 = q.heightAdj.inputCover;
+      const foundationM = facilityType === '연동형' ? length * (span + 1) : length * span * 2;
+      const clampCount = Math.round(rafterCount * purlinRows * 1.08);
+      const braceSet = Math.max(4, Math.ceil(span * length / 28 * (1 + Math.max(0, q.heightAdj.delta) * 0.08)));
+      const motorCount = opts.autoVent ? Math.max(2, span * 2) : 0;
+      const curtainM2 = opts.curtain ? q.area : 0;
+      const screenM2 = opts.screen ? q.area : 0;
+      const structureBeforeCover = q.structure / (1 + (q.coverFilm.factor - 1) * 0.14);
+      const structureBase = structureBeforeCover * (1 + opts.structureFactor / 100);
+      const installBase = ((q.installMin + q.installMax) / 2) * (1 + opts.installFactor / 100);
+      const rows = [
+        { item: '골조 파이프/주요 구조재', basis: `기본 공사비 중 42%, 측고 보정 x${q.heightAdj.costFactor.toFixed(2)}`, amount: structureBase * 0.42, note: '표준 견적 배분' },
+        { item: '피복/마감재', basis: `${q.coverFilm.name} · 피복 ${Math.round(coverM2).toLocaleString('ko-KR')}㎡`, amount: structureBase * 0.14 * q.coverFilm.factor, note: q.coverFilm.note },
+        { item: '기초/고정', basis: '기본 공사비 중 18%', amount: structureBase * 0.18, note: '기초 방식 미확정' },
+        { item: '체결부속/조리개', basis: '기본 공사비 중 8%', amount: structureBase * 0.08, note: '교차점 기준 임의 추정' },
+        { item: '시공 노무/장비', basis: '기본 공사비 중 18%', amount: structureBase * 0.18, note: '지역/현장 보정 필요' },
+        { item: 'MESH 환경제어 HW', basis: `${els.control.value}ch, 센서 ${els.sensor.value}점`, amount: q.mesh.hw, note: 'MESH 가격표 기준' },
+        { item: '설치/배선/시운전', basis: `보정 ${opts.installFactor}%`, amount: installBase, note: '배선거리 미확정' }
+      ];
+      if (motorCount) rows.push({ item: '측창 자동개폐 모터/축', basis: `${motorCount}대 x 350,000원`, amount: motorCount * 350000, note: '모터 사양 임의' });
+      if (curtainM2) rows.push({ item: '다겹보온커튼', basis: `${Math.round(curtainM2).toLocaleString('ko-KR')}㎡ x 22,000원`, amount: curtainM2 * 22000, note: '원단/겹수 임의' });
+      if (screenM2) rows.push({ item: '차광/스크린', basis: `${Math.round(screenM2).toLocaleString('ko-KR')}㎡ x 12,000원`, amount: screenM2 * 12000, note: '스크린율 임의' });
+      if (opts.irrigation) rows.push({ item: '관수/양액 제어 연동', basis: '1식', amount: 1800000, note: '기존 양액기 연동 여부 미확정' });
+      const subtotal = rows.reduce((sum, r) => sum + r.amount, 0);
+      const contingency = subtotal * 0.07;
+      const total = subtotal + contingency;
+      const coverUnit = Math.round(2800 * q.coverFilm.factor);
+      const meshQty = Math.max(1, q.mesh.totalModules);
+      const bom = [
+        { item: '서까래 파이프', unit: 'm', qty: Math.round(rafterPipeM), unitPrice: 4200 },
+        { item: '가로대/도리 파이프', unit: 'm', qty: Math.round(purlinPipeM), unitPrice: 3200 },
+        { item: '피복비닐/마감재', unit: '㎡', qty: Math.round(coverM2), unitPrice: coverUnit },
+        { item: '기초/고정 구간', unit: 'm', qty: Math.round(foundationM), unitPrice: 9500 },
+        { item: '내재해/일반 조리개', unit: '개', qty: clampCount, unitPrice: 950 },
+        { item: '브레싱/버팀대', unit: 'set', qty: braceSet, unitPrice: 85000 },
+        { item: 'MESH 제어모듈', unit: 'ea', qty: meshQty, unitPrice: Math.round(q.mesh.hw / meshQty) }
+      ];
+      if (motorCount) bom.push({ item: '권취/개폐 모터', unit: '대', qty: motorCount, unitPrice: 350000 });
+      if (curtainM2) bom.push({ item: '다겹보온커튼', unit: '㎡', qty: Math.round(curtainM2), unitPrice: 22000 });
+      if (screenM2) bom.push({ item: '차광/스크린', unit: '㎡', qty: Math.round(screenM2), unitPrice: 12000 });
+      const assumptions = [
+        `서까래 간격은 '${q.selected.rafter_spec || '표준 미기재'}'에서 추출했고, 없으면 0.6m로 임의 적용했습니다.`,
+        `표준 측고 ${q.heightAdj.standardSide.toFixed(1)}m 대비 입력 측고 ${side.toFixed(1)}m를 반영해 공사비 보정계수 x${q.heightAdj.costFactor.toFixed(2)}를 적용했습니다.`,
+        `가로대/도리 줄 수는 '${q.selected.purlin_or_beam_spec || '표준 미기재'}'에서 추출했고, 측고 증가분 0.8m마다 측면 보강 2줄을 임의 추가했습니다.`,
+        `피복 비닐은 기본 임의값을 장수비닐로 두고, 현재 선택값은 ${q.coverFilm.name}입니다. PO필름은 피복비 +18%로 임의 보정했습니다.`,
+        '세부 원가 배분율은 골조 42%, 피복 14%, 기초 18%, 부속 8%, 노무 18%로 임의 설정했습니다.',
+        '피복 면적은 바닥면적 x 1.42, 예비비는 7%로 임의 설정했습니다.',
+        '운반비, 폐기물, 토목, 전기 인입, 인허가, 부가세는 최종 견적에서 별도 확인해야 합니다.'
+      ];
+      return { rows, bom, subtotal, contingency, total, assumptions };
+    }
+    function renderDetailedTables() {
+      if (!document.querySelector('#detailDialog').open) return;
+      const q = estimate();
+      const detail = detailedEstimate(q);
+      const costRows = [
+        '<tr><th>항목</th><th>산출근거</th><th>금액</th></tr>',
+        ...detail.rows.map(r => `<tr><td data-label="항목">${r.item}</td><td data-label="산출근거">${r.basis}</td><td data-label="금액">${won(r.amount)}</td></tr>`),
+        `<tr><td data-label="항목">소계</td><td data-label="산출근거">상세 원가 항목 합산</td><td data-label="금액">${won(detail.subtotal)}</td></tr>`,
+        `<tr><td data-label="항목">예비비</td><td data-label="산출근거">7%</td><td data-label="금액">${won(detail.contingency)}</td></tr>`,
+        `<tr><td data-label="항목">상세견적 합계</td><td data-label="산출근거">초안 기준</td><td data-label="금액"><strong>${won(detail.total)}</strong></td></tr>`
+      ].join('');
+      const bomRows = [
+        '<tr><th>품목</th><th>단위</th><th class="num">수량</th><th class="money">단가</th><th class="money">금액</th></tr>',
+        ...detail.bom.map(r => `<tr><td data-label="품목">${r.item}</td><td data-label="단위">${r.unit}</td><td class="num" data-label="수량">${r.qty.toLocaleString('ko-KR')}</td><td class="money" data-label="단가">${exactWon(r.unitPrice)}</td><td class="money" data-label="금액">${exactWon(r.qty * r.unitPrice)}</td></tr>`)
+      ].join('');
+      document.querySelector('#costBreakdownTable').innerHTML = costRows;
+      document.querySelector('#bomTable').innerHTML = bomRows;
+      document.querySelector('#assumptionList').innerHTML = detail.assumptions.map(a => `<li>${a}</li>`).join('');
+      document.querySelector('#drawingPreview').innerHTML = drawingCards(q);
+    }
+    function updateUI() {
+      const q = estimate();
+      document.querySelector('#sceneTitle').textContent = `${facilityType.replace('형','')} ${els.width.value}m x ${els.length.value}m`;
+      document.querySelector('#sceneText').textContent = `${Math.round(q.area).toLocaleString('ko-KR')}㎡, ${Math.round(q.pyeong).toLocaleString('ko-KR')}평 기준. ${q.selected.model_code}와 가장 가깝습니다.`;
+      document.querySelector('#modelMetric').textContent = q.selected.model_code;
+      document.querySelector('#areaMetric').textContent = `${Math.round(q.area).toLocaleString('ko-KR')}㎡`;
+      document.querySelector('#totalMetric').textContent = `${won(q.initialMin)}~${won(q.initialMax)}`;
+      document.querySelector('#subMetric').textContent = `${q.mesh.plan} ${won(q.mesh.monthly)}/월`;
+      document.querySelector('#quoteAmount').textContent = `${won(q.initialMin)}~${won(q.initialMax)}`;
+      document.querySelector('#quoteNote').textContent = `구조물 ${won(q.structure)}(측고보정 x${q.heightAdj.costFactor.toFixed(2)}), MESH HW ${won(q.mesh.hw)}, 설치/배선 ${won(q.installMin)}~${won(q.installMax)} 기준`;
+      document.querySelector('#statusBadge').textContent = q.selected.data_status.includes('akaf_2024_cost') ? '공사비 기준 매칭' : '표준규격 기준 추정';
+      document.querySelector('#specList').innerHTML = [
+        row('표준 코드', q.selected.model_code),
+        row('시설 유형', q.selected.facility_type),
+        row('내재해 기준', `적설 ${q.selected.snow_depth_range_cm || '-'} / 풍속 ${q.selected.wind_speed_range_m_s || '-'}`),
+        row('규격', `폭 ${q.selected.width_range_m || '-'} / 측고 ${q.selected.side_height_range_m || '-'} / 동고 ${q.selected.ridge_height_range_m || '-'}`),
+        row('서까래', q.selected.rafter_spec),
+        row('가로대/보', q.selected.purlin_or_beam_spec),
+        row('피복 비닐', `${q.coverFilm.name} · ${q.coverFilm.note}`),
+        row('설계도', q.selected.has_design_drawings === 'Y' ? '표준 설계도 참조 가능' : '상세 확인 필요')
+      ].join('');
+      document.querySelector('#lineItems').innerHTML = [
+        ['온실 구조/피복/기초 기준', `${won(q.structure)} · 측고보정 x${q.heightAdj.costFactor.toFixed(2)}`],
+        ['피복 비닐 가정', `${q.coverFilm.name} · ${q.coverFilm.note}`],
+        ['MESH 환경제어 HW', won(q.mesh.hw)],
+        ['설치·전선·시운전 범위', `${won(q.installMin)}~${won(q.installMax)}`],
+        ['월 구독료', `${q.mesh.plan} ${won(q.mesh.monthly)}/월`],
+        ['상세 산출', q.selected.akaf_cost_parse_status === 'ok' ? '표준 공사비 기준 반영' : '상담 시 상세 산출 필요']
+      ].map(([a,b])=>`<div class="line-item"><span>${a}</span><strong>${b}</strong></div>`).join('');
+      updateScene(q);
+    }
+    function renderGlossary() {
+      const terms = ['서까래','내재해조리개','피복비닐','개폐축','권취/개폐 모터','다겹보온커튼','제어반','MESH Link'];
+      document.querySelector('#glossary').innerHTML = glossary.filter(g => terms.includes(g.term)).map(g => `
+        <article class="term"><h4>${g.term}</h4><p>${g.plain_description}</p><small>${g.why_it_matters_for_quote}</small></article>
+      `).join('');
+    }
+    function invalidateLead() {
+      leadSubmitted = false;
+    }
+    function quoteSummary(q) {
+      const requests = requestLabels().join(', ') || '추가 선택 없음';
+      return [
+        `시설: ${facilityType} ${els.width.value}m x ${els.length.value}m x ${els.span.value}동`,
+        `측고: ${els.side.value}m`,
+        `작목: ${els.crop.value}`,
+        `피복: ${q.coverFilm.name}`,
+        `추천규격: ${q.selected.model_code}`,
+        `예상면적: ${Math.round(q.area).toLocaleString('ko-KR')}㎡`,
+        `초기투자: ${won(q.initialMin)}~${won(q.initialMax)}`,
+        `추가요청: ${requests}`
+      ].join(' / ');
+    }
+    function fillLeadHiddenFields() {
+      const q = estimate();
+      const requests = requestLabels().join(', ') || '추가 선택 없음';
+      document.querySelector('#leadQuoteSummary').value = quoteSummary(q);
+      document.querySelector('#leadQuoteDetail').value = [
+        `내재해: 적설 ${q.selected.snow_depth_range_cm}, 풍속 ${q.selected.wind_speed_range_m_s}`,
+        `측고보정: 표준 ${q.heightAdj.standardSide.toFixed(1)}m → 입력 ${els.side.value}m, x${q.heightAdj.costFactor.toFixed(2)}`,
+        `MESH: ${els.control.value}ch, 센서 ${els.sensor.value}점`,
+        `월구독: ${q.mesh.plan} ${won(q.mesh.monthly)}/월`,
+        `추가요청: ${requests}`
+      ].join('\n');
+      document.querySelector('#leadPageUrl').value = location.href;
+    }
+    function readLeadInfo() {
+      return {
+        email: document.querySelector('#leadEmail')?.value.trim() || '',
+        phone: document.querySelector('#leadPhone')?.value.trim() || '',
+        memo: document.querySelector('#leadMemo')?.value.trim() || '',
+        consult: document.querySelector('input[name="consultation_wanted"]:checked')?.value || ''
+      };
+    }
+    function showDetail() {
+      const q = estimate();
+      const consultText = leadInfo.consult === 'yes' ? '예' : leadInfo.consult === 'no' ? '아니오' : '-';
+      document.querySelector('#inputTable').innerHTML = tableRows({
+        시설형태: facilityType,
+        폭: `${els.width.value}m`,
+        길이: `${els.length.value}m`,
+        측고: `${els.side.value}m`,
+        동수: els.span.value,
+        작목: els.crop.value,
+        피복비닐: `${q.coverFilm.name} (${q.coverFilm.note})`,
+        MESH: `${els.control.value}ch / 센서 ${els.sensor.value}점`,
+        이메일: leadInfo.email || '-',
+        핸드폰: leadInfo.phone || '-',
+        상담희망: consultText,
+        기타요구사항: leadInfo.memo || '-'
+      });
+      document.querySelector('#basisTable').innerHTML = tableRows({
+        추천규격: q.selected.model_code,
+        내재해: `적설 ${q.selected.snow_depth_range_cm}, 풍속 ${q.selected.wind_speed_range_m_s}`,
+        측고보정: `표준 ${q.heightAdj.standardSide.toFixed(1)}m → 입력 ${els.side.value}m, x${q.heightAdj.costFactor.toFixed(2)}`,
+        피복비닐: `${q.coverFilm.name} · ${q.coverFilm.note}`,
+        구조예상: won(q.structure),
+        MESH_HW: won(q.mesh.hw),
+        초기투자: `${won(q.initialMin)}~${won(q.initialMax)}`,
+        월구독: `${q.mesh.plan} ${won(q.mesh.monthly)}/월`
+      });
+      syncRequestOptionsToDetail();
+      const requests = requestLabels().join(', ') || '추가 선택 없음';
+      document.querySelector('#inquiryText').value = `견적 검토 요청: ${facilityType} ${els.width.value}m x ${els.length.value}m x ${els.span.value}동, ${els.crop.value}. 피복 ${q.coverFilm.name}. 추천규격 ${q.selected.model_code}. 추가 요청: ${requests}. 상담희망: ${consultText}. 기타 요구사항: ${leadInfo.memo || '-'}. 연락처: ${leadInfo.email || '-'} / ${leadInfo.phone || '-'}`;
+      renderDetailedTables();
+      document.querySelector('#detailDialog').showModal();
+      renderDetailedTables();
+    }
+    function openDetail() {
+      if (!wizardComplete) {
+        wizardStep = Math.min(wizardStep + 1, wizardMaxStep);
+        updateWizard();
+        return;
+      }
+      if (!leadSubmitted) {
+        fillLeadHiddenFields();
+        document.querySelector('#leadDialog').showModal();
+        return;
+      }
+      showDetail();
+    }
+    function replaceFormControlsForPdf(root) {
+      root.querySelectorAll('textarea').forEach(el => {
+        const div = document.createElement('div');
+        div.className = 'pdf-value';
+        div.textContent = el.value || '-';
+        el.replaceWith(div);
+      });
+      root.querySelectorAll('select').forEach(el => {
+        const div = document.createElement('div');
+        div.className = 'pdf-value';
+        div.textContent = el.options[el.selectedIndex]?.textContent || el.value || '-';
+        el.replaceWith(div);
+      });
+      root.querySelectorAll('input').forEach(el => {
+        const span = document.createElement('span');
+        span.className = 'pdf-value';
+        if (el.type === 'checkbox' || el.type === 'radio') {
+          span.textContent = el.checked ? '선택' : '미선택';
+        } else {
+          span.textContent = el.value || '-';
+        }
+        el.replaceWith(span);
+      });
+    }
+    async function downloadDetailPdf() {
+      const btn = document.querySelector('#printDetail');
+      const source = document.querySelector('#detailDialog .modal-body');
+      const html2canvas = window.html2canvas;
+      const jsPDF = window.jspdf?.jsPDF;
+      if (!source || !html2canvas || !jsPDF) {
+        window.print();
+        return;
+      }
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'PDF 생성 중';
+      const wrapper = document.createElement('div');
+      wrapper.className = 'pdf-export-root';
+      const title = document.createElement('h1');
+      title.textContent = 'MESH 온실 상세견적서';
+      const clone = source.cloneNode(true);
+      replaceFormControlsForPdf(clone);
+      wrapper.append(title, clone);
+      document.body.appendChild(wrapper);
+      try {
+        const canvas = await html2canvas(wrapper, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          useCORS: true,
+          windowWidth: wrapper.scrollWidth,
+          windowHeight: wrapper.scrollHeight
+        });
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const margin = 8;
+        const pageWidth = 210;
+        const pageHeight = 297;
+        const imgWidth = pageWidth - margin * 2;
+        const imgHeight = canvas.height * imgWidth / canvas.width;
+        const usableHeight = pageHeight - margin * 2;
+        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+        let y = margin;
+        let remaining = imgHeight;
+        pdf.addImage(imgData, 'JPEG', margin, y, imgWidth, imgHeight);
+        remaining -= usableHeight;
+        while (remaining > 0) {
+          pdf.addPage();
+          y = margin - (imgHeight - remaining);
+          pdf.addImage(imgData, 'JPEG', margin, y, imgWidth, imgHeight);
+          remaining -= usableHeight;
+        }
+        const date = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+        pdf.save(`MESH_온실_상세견적서_${date}.pdf`);
+      } finally {
+        wrapper.remove();
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+    document.querySelector('#typeTabs').addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      facilityType = btn.dataset.type;
+      document.querySelectorAll('#typeTabs button').forEach(b=>b.classList.toggle('active', b === btn));
+      if (facilityType === '연동형') { els.width.value = 7; els.span.value = 3; els.side.value = 2.8; els.control.value = 14; els.sensor.value = 2; }
+      if (facilityType === '광폭형') { els.width.value = 14.8; els.span.value = 1; els.side.value = 2.2; els.control.value = 14; els.sensor.value = 2; }
+      if (facilityType === '단동형') { els.width.value = 7; els.span.value = 1; els.side.value = 1.4; els.control.value = 6; els.sensor.value = 1; }
+      wizardComplete = false;
+      invalidateLead();
+      wizardStep = 1;
+      updateWizard();
+      updateUI();
+    });
+    Object.values(els).filter(Boolean).forEach(el => {
+      el.addEventListener('input', () => { invalidateLead(); updateUI(); updateWizard(); });
+      el.addEventListener('change', () => { invalidateLead(); updateUI(); updateWizard(); });
+    });
+    ['#reqAutoVent','#reqCurtain','#reqScreen','#reqIrrigation'].forEach(id => {
+      document.querySelector(id)?.addEventListener('change', () => { invalidateLead(); updateWizard(); });
+    });
+    document.querySelector('#resetBtn').addEventListener('click', () => location.reload());
+    document.querySelector('#openDetailTop').addEventListener('click', openDetail);
+    document.querySelector('#openDetailSide').addEventListener('click', openDetail);
+    document.querySelector('#closeLead').addEventListener('click', () => document.querySelector('#leadDialog').close());
+    document.querySelector('#leadForm').addEventListener('submit', () => {
+      fillLeadHiddenFields();
+      leadInfo = readLeadInfo();
+      leadSubmitted = true;
+      setTimeout(() => {
+        document.querySelector('#leadDialog').close();
+        showDetail();
+      }, 500);
+    });
+    document.querySelector('#closeDetail').addEventListener('click', () => document.querySelector('#detailDialog').close());
+    document.querySelector('#prevStep').addEventListener('click', () => {
+      wizardComplete = false;
+      wizardStep = Math.max(0, wizardStep - 1);
+      updateWizard();
+    });
+    document.querySelector('#nextStep').addEventListener('click', () => {
+      if (!currentStepValid()) return;
+      if (wizardStep >= wizardMaxStep) {
+        wizardComplete = true;
+      } else {
+        wizardStep += 1;
+      }
+      updateWizard();
+      updateUI();
+    });
+    document.querySelector('#reviewItems').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-jump]');
+      if (!btn) return;
+      wizardComplete = false;
+      wizardStep = Number(btn.dataset.jump);
+      updateWizard();
+    });
+    document.querySelector('#collapseWizard').addEventListener('click', () => {
+      wizardComplete = false;
+      updateWizard();
+    });
+    ['#optAutoVent','#optCurtain','#optScreen','#optIrrigation','#optStructureFactor','#optInstallFactor'].forEach(id => {
+      document.querySelector(id)?.addEventListener('input', renderDetailedTables);
+      document.querySelector(id)?.addEventListener('change', renderDetailedTables);
+    });
+    document.querySelector('#printDetail').addEventListener('click', downloadDetailPdf);
+
+    let scene, camera, renderer, group, fallback = false;
+    function initScene() {
+      const canvas = document.querySelector('#scene');
+      try {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+        camera.position.set(18, 14, 24);
+        camera.lookAt(0, 2, 0);
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x7a8b72, 2.2));
+        const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+        sun.position.set(14, 22, 10);
+        scene.add(sun);
+        const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 60), new THREE.MeshStandardMaterial({ color: 0xb7c5a4, roughness: .9 }));
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.02;
+        scene.add(ground);
+        group = new THREE.Group();
+        scene.add(group);
+        window.addEventListener('resize', resizeScene);
+        resizeScene();
+      } catch (err) {
+        fallback = true;
+        canvas.style.display = 'none';
+        document.querySelector('#fallbackScene').style.display = 'block';
+      }
+    }
+    function resizeScene() {
+      if (fallback || !renderer) return;
+      const wrap = document.querySelector('.scene-wrap');
+      const w = wrap.clientWidth, h = wrap.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    function archPoints(width, height, side) {
+      const pts = [];
+      const half = width / 2;
+      pts.push(new THREE.Vector3(-half, 0, 0), new THREE.Vector3(-half, side, 0));
+      for (let i=0; i<=24; i++) {
+        const t = Math.PI - (Math.PI * i / 24);
+        pts.push(new THREE.Vector3(Math.cos(t) * half, side + Math.sin(t) * (height-side), 0));
+      }
+      pts.push(new THREE.Vector3(half, 0, 0));
+      return pts;
+    }
+    function updateScene(q) {
+      if (fallback || !renderer) return drawFallback(q);
+      group.clear();
+      const width = Math.min(n(els.width.value), 18);
+      const length = Math.min(n(els.length.value) / 7, 18);
+      const side = Math.min(n(els.side.value), 4);
+      const spans = Math.max(1, Math.min(n(els.span.value), 6));
+      const height = estimatedRidge(q.selected, side, width);
+      const frameMat = new THREE.LineBasicMaterial({ color: 0x2b4d42, linewidth: 2 });
+      const coverMat = new THREE.MeshPhysicalMaterial({ color: 0xddeee9, transparent: true, opacity: .38, roughness: .18, metalness: 0, side: THREE.DoubleSide });
+      const floorMat = new THREE.MeshStandardMaterial({ color: 0x8ca77d, roughness: .9 });
+      for (let s=0; s<spans; s++) {
+        const xoff = (s - (spans-1)/2) * width * .82;
+        const shape = new THREE.Shape();
+        const pts2 = archPoints(width, height, side).map(p => [p.x + xoff, p.y]);
+        shape.moveTo(pts2[0][0], pts2[0][1]);
+        pts2.slice(1).forEach(p => shape.lineTo(p[0], p[1]));
+        const geom = new THREE.ExtrudeGeometry(shape, { depth: length, bevelEnabled: false, steps: 1 });
+        geom.translate(0, 0, -length/2);
+        group.add(new THREE.Mesh(geom, coverMat));
+      }
+      const zLines = 7;
+      for (let zi=0; zi<zLines; zi++) {
+        const z = -length/2 + length * zi/(zLines-1);
+        for (let s=0; s<spans; s++) {
+          const xoff = (s - (spans-1)/2) * width * .82;
+          const curve = new THREE.BufferGeometry().setFromPoints(archPoints(width, height, side).map(p => new THREE.Vector3(p.x+xoff, p.y, z)));
+          group.add(new THREE.Line(curve, frameMat));
+        }
+      }
+      for (let s=0; s<spans; s++) {
+        const xoff = (s - (spans-1)/2) * width * .82;
+        for (const x of [-width/2, 0, width/2]) {
+          const geom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x+xoff, side+.2, -length/2), new THREE.Vector3(x+xoff, side+.2, length/2)]);
+          group.add(new THREE.Line(geom, frameMat));
+        }
+      }
+      const base = new THREE.Mesh(new THREE.BoxGeometry(width*spans*.86, .08, length), floorMat);
+      base.position.y = .02;
+      group.add(base);
+      group.rotation.y += 0.002;
+      renderer.render(scene, camera);
+    }
+    function animate() {
+      if (!fallback && renderer && group) {
+        group.rotation.y += 0.0016;
+        renderer.render(scene, camera);
+      }
+      requestAnimationFrame(animate);
+    }
+    function drawFallback(q) {
+      const canvas = document.querySelector('#fallbackScene');
+      const wrap = document.querySelector('.scene-wrap');
+      canvas.width = wrap.clientWidth * 2; canvas.height = wrap.clientHeight * 2;
+      const ctx = canvas.getContext('2d'); ctx.scale(2,2);
+      ctx.clearRect(0,0,wrap.clientWidth,wrap.clientHeight);
+      ctx.strokeStyle = '#254c3c'; ctx.lineWidth = 2;
+      const w = Math.min(wrap.clientWidth*.6, 520), h = 150, x = wrap.clientWidth*.2, y = wrap.clientHeight*.48;
+      for (let i=0;i<6;i++){ const dx=i*28; ctx.beginPath(); ctx.moveTo(x+dx,y+h); ctx.quadraticCurveTo(x+w/2+dx,y-h,x+w+dx,y+h); ctx.stroke(); }
+    }
+    renderGlossary();
+    initScene();
+    updateUI();
+    updateWizard();
+    animate();
+  </script>
+</body>
+</html>

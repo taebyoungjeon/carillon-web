@@ -31,6 +31,7 @@ export default function Nav() {
             { href: "/#problems", label: "고객 과제" },
             { href: "/#services", label: "서비스" },
             { href: "/#testimonials", label: "고객 사례" },
+            { href: "/quote", label: "견적" },
             { href: "/blog", label: "블로그" },
           ].map((item) => (
             <a
@@ -51,10 +52,10 @@ export default function Nav() {
 
         {/* Mobile CTA */}
         <a
-          href="/#cta"
+          href="/quote"
           className="md:hidden text-[12px] font-semibold tracking-widest uppercase bg-ink text-white px-4 py-2 rounded hover:bg-gold transition-colors"
         >
-          상담
+          견적
         </a>
       </div>
     </nav>

@@ -29,10 +29,10 @@ export default function CTA() {
         {/* buttons */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10">
           <a
-            href="mailto:tbj@carillon.kr"
+            href="/quote"
             className="inline-flex items-center justify-center gap-2 bg-ink text-white text-[13px] font-semibold tracking-widest uppercase px-9 py-4 rounded hover:bg-gold transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_10px_32px_rgba(0,0,0,0.15)] group"
           >
-            무료 상담 신청하기
+            예상 견적 확인하기
             <span className="transition-transform duration-200 group-hover:translate-x-1">→</span>
           </a>
           <a
