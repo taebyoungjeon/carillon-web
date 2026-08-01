@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useState } from "react";
 
@@ -17,6 +18,8 @@ const services = [
     desc: "표준 규격 매칭, 자재 구성, 현장 조건을 반영해 견적부터 시공 실행까지 연결합니다.",
     kpiNum: "QUOTE",
     kpiLabel: "견적부터 실행까지",
+    ctaHref: "/quote",
+    ctaLabel: "견적 내기",
   },
   {
     tag: "AI Solution",
@@ -24,6 +27,8 @@ const services = [
     desc: "센서, 영상, 환경제어 데이터를 기반으로 운영 단계에서 활용 가능한 AI 솔루션 적용안을 설계합니다.",
     kpiNum: "AI",
     kpiLabel: "제어·모니터링 확장",
+    ctaHref: "/blog",
+    ctaLabel: "납품 실적 살펴보기",
   },
 ];
 
@@ -124,6 +129,15 @@ export default function Services() {
                 >
                   에너지 컨설팅 하기
                 </button>
+              )}
+
+              {s.ctaHref && (
+                <Link
+                  href={s.ctaHref}
+                  className="mb-9 inline-flex min-h-11 items-center justify-center rounded border border-gold/35 px-5 text-[12px] font-semibold tracking-widest text-gold transition-all duration-200 hover:bg-gold hover:text-ink"
+                >
+                  {s.ctaLabel}
+                </Link>
               )}
 
               {/* KPI */}
