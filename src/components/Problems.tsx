@@ -4,24 +4,17 @@ import { useEffect, useRef } from "react";
 const problems = [
   {
     num: "01",
-    icon: "🔥",
-    stat: "초기 검토의 기준",
-    title: "냉난방 부하가\n계산되지 않는다",
-    desc: "면적과 작목만으로 견적을 잡으면 설비 용량, 배관, 전기 인입 조건이 뒤늦게 흔들립니다.",
+    icon: "🏗️",
+    stat: "GREENHOUSE EPC",
+    title: "온실 컨설팅·설계·시공을\n하나의 흐름으로",
+    desc: "금속구조물·창호·온실공사 기반의 시공 관점으로 초기 검토, 견적, 설계, EPC 진행 조건을 함께 검토합니다.",
   },
   {
     num: "02",
-    icon: "🔧",
-    stat: "견적·시공 분리",
-    title: "견적 따로,\n시공 따로",
-    desc: "초기 견적과 실제 시공 조건이 맞지 않으면 발주, 자재, 현장 일정이 계속 다시 조정됩니다.",
-  },
-  {
-    num: "03",
-    icon: "📊",
-    stat: "AI 적용 시점",
-    title: "AI 솔루션이\n마지막에 붙는다",
-    desc: "센서, 카메라, 제어 데이터를 설계 단계부터 고려하지 않으면 완공 후 자동화 확장이 어렵습니다.",
+    icon: "🖥️",
+    stat: "AI INFRA",
+    title: "AI 인프라 서버와\n고성능 장비 구축",
+    desc: "H200, NVIDIA RTX PRO 6000 등 AI 연산 장비 납품 실적을 바탕으로 연구기관·기업의 서버 구축과 장비 조달을 지원합니다.",
   },
 ];
 
@@ -58,15 +51,15 @@ export default function Problems() {
           </span>
           <div className="mx-auto mt-5 mb-6 w-10 h-0.5 bg-gold" />
           <h2 className="font-serif text-[clamp(28px,4vw,48px)] font-semibold text-ink leading-tight">
-            지금 이런 고민, 하고 계시죠?
+            칼리온은 두 가지 실행 영역에 집중합니다
           </h2>
           <p className="mt-4 text-[15px] md:text-[16px] text-stone-500 leading-relaxed max-w-lg mx-auto">
-            온실 구축 초기에 놓치기 쉬운 세 가지 엔지니어링 문제입니다.
+            온실 EPC와 AI 인프라 구축을 기술 검토부터 납품·시공 단계까지 연결합니다.
           </p>
         </div>
 
         {/* cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {problems.map((p, i) => (
             <div
               key={i}
