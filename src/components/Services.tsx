@@ -19,7 +19,7 @@ const services = [
     kpiNum: "QUOTE",
     kpiLabel: "견적부터 실행까지",
     ctaHref: "/quote",
-    ctaLabel: "견적 내기",
+    ctaLabel: "온실 견적 하러가기",
   },
   {
     tag: "AI Solution",
@@ -28,7 +28,7 @@ const services = [
     kpiNum: "AI",
     kpiLabel: "제어·모니터링 확장",
     ctaHref: "/blog",
-    ctaLabel: "납품 실적 살펴보기",
+    ctaLabel: "납품 실적 보러가기",
   },
 ];
 
@@ -125,16 +125,16 @@ export default function Services() {
                 <button
                   type="button"
                   onClick={() => setEnergyOpen(true)}
-                  className="mb-9 inline-flex min-h-11 items-center justify-center rounded border border-gold/35 px-5 text-[12px] font-semibold tracking-widest text-gold transition-all duration-200 hover:bg-gold hover:text-ink"
+                  className="mb-9 flex min-h-12 w-full items-center justify-center rounded-md border border-gold/35 px-5 text-center text-[12px] font-semibold tracking-widest text-gold transition-all duration-200 hover:bg-gold hover:text-ink"
                 >
-                  에너지 컨설팅 하기
+                  에너지 컨설팅 하러가기
                 </button>
               )}
 
               {s.ctaHref && (
                 <Link
                   href={s.ctaHref}
-                  className="mb-9 inline-flex min-h-11 items-center justify-center rounded border border-gold/35 px-5 text-[12px] font-semibold tracking-widest text-gold transition-all duration-200 hover:bg-gold hover:text-ink"
+                  className="mb-9 flex min-h-12 w-full items-center justify-center rounded-md border border-gold/35 px-5 text-center text-[12px] font-semibold tracking-widest text-gold transition-all duration-200 hover:bg-gold hover:text-ink"
                 >
                   {s.ctaLabel}
                 </Link>
