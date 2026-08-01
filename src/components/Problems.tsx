@@ -47,14 +47,14 @@ export default function Problems() {
           className="reveal text-center mb-16 md:mb-20"
         >
           <span className="text-[10px] font-bold tracking-[0.35em] uppercase text-gold">
-            Pain Points
+            Business Areas
           </span>
           <div className="mx-auto mt-5 mb-6 w-10 h-0.5 bg-gold" />
           <h2 className="font-serif text-[clamp(28px,4vw,48px)] font-semibold text-ink leading-tight">
-            칼리온은 두 가지 실행 영역에 집중합니다
+            Greenhouse EPC &amp;<br className="hidden sm:block" /> AI Infrastructure
           </h2>
           <p className="mt-4 text-[15px] md:text-[16px] text-stone-500 leading-relaxed max-w-lg mx-auto">
-            온실 EPC와 AI 인프라 구축을 기술 검토부터 납품·시공 단계까지 연결합니다.
+            Engineering, construction, equipment supply, and server deployment for greenhouse and research infrastructure.
           </p>
         </div>
 
