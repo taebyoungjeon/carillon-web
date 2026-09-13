@@ -14,6 +14,35 @@ export const categories = ["전체", "수행 실적"];
 
 export const posts: Post[] = [
   {
+    slug: "kaist-bio-brain-engineering-server-delivery",
+    category: "수행 실적",
+    title: "KAIST 바이오 및 뇌공학과 서버 납품 수행 사례",
+    summary:
+      "칼리온은 KAIST 바이오 및 뇌공학과에 서버를 납품하며 대학 연구기관 대상 서버 장비 납품 실적을 이어갔습니다.",
+    date: "2026. 09. 14",
+    readTime: "1분",
+    coverColor: "#eef1f6",
+    icon: "KAIST",
+    body: `칼리온은 **KAIST 바이오 및 뇌공학과**에 **서버 납품을 완료**했습니다.
+
+## 프로젝트 개요
+
+이번 사업은 KAIST 바이오 및 뇌공학과 대상 서버 장비 납품 사례입니다. 기존 KAIST H200 및 고성능 GPGPU·메모리 모듈 납품에 이어, 대학 연구기관 대상 서버 납품 실적을 추가했습니다.
+
+## 수행 실적
+
+칼리온은 연구기관 대상 GPU 장비와 서버 납품 경험을 쌓아가고 있습니다. 이번 사례 역시 칼리온의 AI 인프라 사업 영역 중 연구기관 장비 공급 실적에 해당합니다.
+
+## 프로젝트 정보
+
+| 항목 | 내용 |
+| ------ | ------ |
+| 납품처 | KAIST 바이오 및 뇌공학과 |
+| 납품 품목 | 서버 |
+| 수행 구분 | 대학 연구기관 서버 장비 납품 |
+| 수행 상태 | 납품 완료 |`,
+  },
+  {
     slug: "kaist-gpgpu-memory-module-delivery",
     category: "수행 실적",
     title: "KAIST 고성능 GPGPU 및 메모리 모듈 납품 수행 사례",
