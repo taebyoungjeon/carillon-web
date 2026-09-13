@@ -388,6 +388,8 @@
       display: block;
     }
     .photo-guide .marker {
+      cursor: pointer;
+      padding: 0;
       position: absolute;
       width: 28px;
       height: 28px;
@@ -409,6 +411,12 @@
       border-radius: inherit;
       border: 1px solid rgba(198, 161, 91, .7);
     }
+    .photo-guide .marker[aria-pressed="true"] { background: #285b7a; }
+    .photo-guide .marker:focus-visible { outline: 3px solid #c6a15b; outline-offset: 4px; }
+    #publicMaterialGuide .annotated-diagram { grid-template-columns: minmax(0, 1fr); }
+    #publicMaterialGuide .drawing-card { border: 0; padding: 0; }
+    #publicMaterialGuide .callout-list li:not(.selected) { display: none; }
+    .callout-list li.selected { border-color: #285b7a; }
     .photo-guide-caption {
       margin: 0;
       border-top: 1px solid rgba(217,223,216,.9);
@@ -598,6 +606,7 @@
     <aside>
       <section class="section wizard" id="quoteWizard">
         <h2>견적 조건</h2>
+        <p id="stepCounter" class="wizard-help" aria-live="polite"></p>
         <div class="wizard-progress" id="wizardProgress" aria-hidden="true"></div>
         <div class="wizard-step active" data-step="0">
           <h3>시설 형태</h3>
@@ -736,8 +745,20 @@
       <section class="metric-grid">
         <div class="metric"><div class="label">추천 표준규격</div><div class="value" id="modelMetric">-</div><div class="sub" id="modelSub">공개 표준규격 + 설계자료 기준</div></div>
         <div class="metric"><div class="label">예상 면적</div><div class="value" id="areaMetric">-</div><div class="sub">폭 x 길이 x 동수</div></div>
-        <div class="metric"><div class="label">초기 투자 범위</div><div class="value" id="totalMetric">-</div><div class="sub">VAT 별도, 참고가</div></div>
+        <div class="metric"><div class="label">선택 옵션 포함 예상 견적</div><div class="value" id="totalMetric">-</div><div class="sub">예비비 7% 포함 · VAT 별도</div></div>
         <div class="metric"><div class="label">월 구독</div><div class="value" id="subMetric">-</div><div class="sub">MESH 선택 시</div></div>
+      </section>
+      <section class="section">
+        <h3>예산 확인</h3>
+        <div id="budgetSummary" class="spec-list" aria-live="polite"></div>
+        <p id="matchNotice" class="note"></p>
+        <p class="note">별도 검토: 토목·부지 정지, 전기 인입, 냉난방 설비, 재배 베드, 양액기 본체, 인허가, 운반·폐기물 처리. 월 구독료는 일회성 견적에 포함되지 않습니다.</p>
+      </section>
+      <section class="section">
+        <details id="publicGuide">
+          <summary style="cursor:pointer;font-weight:700;padding:12px 0">온실 구조와 자재 살펴보기</summary>
+          <div id="publicMaterialGuide"></div>
+        </details>
       </section>
       <section class="section">
         <h3>부속 설명</h3>
@@ -926,17 +947,17 @@
       return ['시설 형태','시설 폭','시설 길이','측고','동수/연동 수','내재해 기준','작목/용도','피복 비닐','MESH 환경제어','추가 요청'][step] || '-';
     }
     function currentStepValid() {
-      if (wizardStep === 1) return n(els.width.value) >= 3;
-      if (wizardStep === 2) return n(els.length.value) >= 10;
-      if (wizardStep === 3) return n(els.side.value) >= 0.8;
-      if (wizardStep === 4) return n(els.span.value) >= 1;
-      if (wizardStep === 5) return n(els.snow.value) >= 20 && n(els.wind.value) >= 20;
-      if (wizardStep === 8) return n(els.control.value) >= 0 && n(els.sensor.value) >= 0;
-      return true;
+      return [...document.querySelectorAll(`.wizard-step[data-step="${wizardStep}"] input[type="number"]`)]
+        .every(input => input.value !== '' && input.checkValidity());
+    }
+    function allInputsValid() {
+      return Object.values(els).filter(el => el.type === 'number')
+        .every(input => input.value !== '' && input.checkValidity());
     }
     function updateWizard() {
       const wizard = document.querySelector('#quoteWizard');
       if (!wizard) return;
+      document.querySelector('#stepCounter').textContent = wizardComplete ? '조건 입력 완료' : `${wizardStep + 1} / ${wizardMaxStep + 1} · ${stepLabel(wizardStep)}`;
       wizard.classList.toggle('wizard-complete', wizardComplete);
       document.querySelectorAll('.wizard-step').forEach(step => {
         step.classList.toggle('active', Number(step.dataset.step) === wizardStep);
@@ -1050,9 +1071,16 @@
       const installFactor = 1 + Math.max(0, heightAdj.delta) * 0.04;
       const installMin = rawInstallMin * installFactor;
       const installMax = rawInstallMax * installFactor;
-      const initialMin = structure + mesh.hw + installMin;
-      const initialMax = structure + mesh.hw + installMax;
-      return { selected, area, pyeong, structure, mesh, installMin, installMax, initialMin, initialMax, heightAdj, coverFilm };
+      const q = { selected, area, pyeong, structure, mesh, installMin, installMax, heightAdj, coverFilm };
+      const detail = detailedEstimate(q, {
+        autoVent: document.querySelector('#reqAutoVent').checked,
+        curtain: document.querySelector('#reqCurtain').checked,
+        screen: document.querySelector('#reqScreen').checked,
+        irrigation: document.querySelector('#reqIrrigation').checked,
+        structureFactor: 0, installFactor: 0
+      });
+      const installationSpread = (installMax - installMin) / 2 * 1.07;
+      return { ...q, initialMin: detail.total - installationSpread, initialMax: detail.total + installationSpread, detail };
     }
     function row(label, value) {
       return `<div class="spec-row"><b>${label}</b><span>${value || '-'}</span></div>`;
@@ -1091,21 +1119,21 @@
         <article class="drawing-card featured">
           <h4>물량 항목 안내도</h4>
           <div class="annotated-diagram">
-            <div class="photo-guide" role="img" aria-label="온실 물량 항목 안내 사진">
+            <div class="photo-guide" aria-label="온실 물량 항목 안내">
               <div class="photo-guide-frame">
                 <img src="/images/greenhouse-material-guide.png" alt="온실 골조와 피복, 브레싱, 모터, 커튼 위치를 보여주는 예시 이미지">
                 ${markers.map(([num, x, y]) => `
-                  <span class="marker" style="left:${x}%;top:${y}%">${num}</span>
+                  <button type="button" class="marker" data-material="${num}" aria-label="${num}. ${callouts[Number(num)-1][1]}" aria-pressed="${num === '1'}" title="${callouts[Number(num)-1][1]}" style="left:${x}%;top:${y}%">${num}</button>
                 `).join('')}
               </div>
               <p class="photo-guide-caption">
-                폭 ${width.toFixed(1)}m x 길이 ${length.toFixed(1)}m x ${span}동 기준 예시입니다.
-                번호를 물량내역서 품목과 대조해 보세요. 실제 위치와 수량은 현장 조건에 따라 달라집니다.
+                자재 위치를 설명하는 공통 예시 이미지입니다. 입력 치수에 맞춘 설계도는 아닙니다.
+                현재 조건: 폭 ${width.toFixed(1)}m x 길이 ${length.toFixed(1)}m x ${span}동. 실제 배치와 수량은 설계에 따라 달라집니다.
               </p>
             </div>
             <ol class="callout-list">
               ${callouts.map(([num, title, desc]) => `
-                <li><span class="callout-num">${num}</span><span><b>${title}</b>${desc}</span></li>
+                <li data-material-description="${num}" class="${num === '1' ? 'selected' : ''}"><span class="callout-num">${num}</span><span><b>${title}</b>${desc}</span></li>
               `).join('')}
             </ol>
           </div>
@@ -1273,7 +1301,8 @@
         `가로대/도리 줄 수는 '${q.selected.purlin_or_beam_spec || '표준 미기재'}'에서 추출했고, 측고 증가분 0.8m마다 측면 보강 2줄을 임의 추가했습니다.`,
         `피복 비닐은 기본 임의값을 장수비닐로 두고, 현재 선택값은 ${q.coverFilm.name}입니다. PO필름은 피복비 +18%로 임의 보정했습니다.`,
         '세부 원가 배분율은 골조 42%, 피복 14%, 기초 18%, 부속 8%, 노무 18%로 임의 설정했습니다.',
-        '피복 면적은 바닥면적 x 1.42, 예비비는 7%로 임의 설정했습니다.',
+        '피복 면적은 바닥면적 x 1.18에 외곽 길이 x 측고 x 0.55를 더한 개략값이며, 예비비는 7%입니다.',
+        '물량내역서는 별도 수량 추정 자료이며, 단가를 곱한 합계는 표준 공사비를 배분한 위 견적과 일치하지 않을 수 있습니다.',
         '운반비, 폐기물, 토목, 전기 인입, 인허가, 부가세는 최종 견적에서 별도 확인해야 합니다.'
       ];
       return { rows, bom, subtotal, contingency, total, assumptions };
@@ -1299,7 +1328,28 @@
       document.querySelector('#drawingPreview').innerHTML = drawingCards(q);
     }
     function updateUI() {
+      if (!allInputsValid()) return;
       const q = estimate();
+      document.querySelector('#budgetSummary').innerHTML = [
+        row('공급가액 기준', exactWon(q.detail.total)),
+        row('부가세 10%', exactWon(q.detail.total * 0.1)),
+        row('부가세 포함 예산', exactWon(q.detail.total * 1.1)),
+        row('평당 금액 (VAT 별도)', exactWon(q.detail.total / q.pyeong)),
+        row('선택 옵션', requestLabels().join(', ') || '없음')
+      ].join('');
+      const inRange = (value, spec) => {
+        const values = (String(spec || '').match(/\d+(?:\.\d+)?/g) || []).map(Number);
+        return values.length > 0 && value >= Math.min(...values) && value <= Math.max(...values);
+      };
+      const maxSpec = spec => Math.max(0, ...(String(spec || '').match(/\d+(?:\.\d+)?/g) || []).map(Number));
+      const matches = inRange(n(els.width.value), q.selected.width_range_m)
+        && inRange(n(els.side.value), q.selected.side_height_range_m)
+        && n(els.snow.value) <= maxSpec(q.selected.snow_depth_range_cm)
+        && n(els.wind.value) <= maxSpec(q.selected.wind_speed_range_m_s);
+      document.querySelector('#matchNotice').textContent = matches
+        ? '입력값이 참고 모델의 표기 범위에 있습니다. 시공 지역의 내재해 기준과 실제 설계 적합성은 별도 확인이 필요합니다.'
+        : '입력값 중 참고 모델의 표기 범위를 벗어난 항목이 있습니다. 현재 금액은 유사 규격 추정이며, 구조 검토 후 달라질 수 있습니다.';
+      document.querySelector('#publicMaterialGuide').innerHTML = materialGuideCard(q);
       document.querySelector('#sceneTitle').textContent = `${facilityType.replace('형','')} ${els.width.value}m x ${els.length.value}m`;
       document.querySelector('#sceneText').textContent = `${Math.round(q.area).toLocaleString('ko-KR')}㎡, ${Math.round(q.pyeong).toLocaleString('ko-KR')}평 기준. ${q.selected.model_code}와 가장 가깝습니다.`;
       document.querySelector('#modelMetric').textContent = q.selected.model_code;
@@ -1307,8 +1357,8 @@
       document.querySelector('#totalMetric').textContent = `${won(q.initialMin)}~${won(q.initialMax)}`;
       document.querySelector('#subMetric').textContent = `${q.mesh.plan} ${won(q.mesh.monthly)}/월`;
       document.querySelector('#quoteAmount').textContent = `${won(q.initialMin)}~${won(q.initialMax)}`;
-      document.querySelector('#quoteNote').textContent = `구조물 ${won(q.structure)}(측고보정 x${q.heightAdj.costFactor.toFixed(2)}), MESH HW ${won(q.mesh.hw)}, 설치/배선 ${won(q.installMin)}~${won(q.installMax)} 기준`;
-      document.querySelector('#statusBadge').textContent = q.selected.data_status.includes('akaf_2024_cost') ? '공사비 기준 매칭' : '표준규격 기준 추정';
+      document.querySelector('#quoteNote').textContent = '선택 옵션과 예비비 7%를 포함한 공급가액입니다. 범위는 설치·배선비 차이이며, 현장 조건에 따른 전체 가격 변동폭은 아닙니다.';
+      document.querySelector('#statusBadge').textContent = !matches ? '규격 검토 필요' : q.selected.data_status.includes('akaf_2024_cost') ? '공사비 기준 매칭' : '표준규격 기준 추정';
       document.querySelector('#specList').innerHTML = [
         row('표준 코드', q.selected.model_code),
         row('시설 유형', q.selected.facility_type),
@@ -1324,6 +1374,8 @@
         ['피복 비닐 가정', `${q.coverFilm.name} · ${q.coverFilm.note}`],
         ['MESH 환경제어 HW', won(q.mesh.hw)],
         ['설치·전선·시운전 범위', `${won(q.installMin)}~${won(q.installMax)}`],
+        ...q.detail.rows.slice(7).map(r => [r.item, won(r.amount)]),
+        ['예비비 7%', won(q.detail.contingency)],
         ['월 구독료', `${q.mesh.plan} ${won(q.mesh.monthly)}/월`],
         ['상세 산출', q.selected.akaf_cost_parse_status === 'ok' ? '표준 공사비 기준 반영' : '상담 시 상세 산출 필요']
       ].map(([a,b])=>`<div class="line-item"><span>${a}</span><strong>${b}</strong></div>`).join('');
@@ -1553,9 +1605,16 @@
       el.addEventListener('change', () => { invalidateLead(); updateUI(); updateWizard(); });
     });
     ['#reqAutoVent','#reqCurtain','#reqScreen','#reqIrrigation'].forEach(id => {
-      document.querySelector(id)?.addEventListener('change', () => { invalidateLead(); updateWizard(); });
+      document.querySelector(id)?.addEventListener('change', () => { invalidateLead(); updateWizard(); updateUI(); });
     });
     document.querySelector('#resetBtn').addEventListener('click', () => location.reload());
+    document.addEventListener('click', event => {
+      const marker = event.target.closest('button[data-material]');
+      if (!marker) return;
+      const guide = marker.closest('.annotated-diagram');
+      guide.querySelectorAll('[data-material]').forEach(button => button.setAttribute('aria-pressed', String(button === marker)));
+      guide.querySelectorAll('[data-material-description]').forEach(item => item.classList.toggle('selected', item.dataset.materialDescription === marker.dataset.material));
+    });
     document.querySelector('#openDetailTop').addEventListener('click', openDetail);
     document.querySelector('#openDetailSide').addEventListener('click', openDetail);
     document.querySelector('#closeLead').addEventListener('click', () => document.querySelector('#leadDialog').close());
