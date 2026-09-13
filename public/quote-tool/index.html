@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>칼리온 온실 견적 시뮬레이터</title>
   <script src="./greenhouse-data.js"></script>
+  <script type="importmap">{"imports":{"three":"./vendor/three/three.module.js"}}</script>
   <script defer src="./vendor/html2canvas.min.js"></script>
   <script defer src="./vendor/jspdf.umd.min.js"></script>
   <script defer>
@@ -105,18 +106,30 @@
     main {
       min-width: 0;
       display: grid;
-      grid-template-rows: minmax(360px, 56vh) auto;
+      grid-template-rows: minmax(460px, 62vh) auto;
     }
     .scene-wrap {
       position: relative;
       overflow: hidden;
-      background: linear-gradient(#dce9ef 0%, #eff4ee 54%, #d6dfcf 55%, #b9c7a8 100%);
+      background: #edf1f3;
     }
     #scene {
       width: 100%;
       height: 100%;
       display: block;
+      cursor: grab;
     }
+    #scene:active { cursor: grabbing; }
+    .scene-tools { position:absolute;top:16px;left:16px;right:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap; }
+    .scene-tools button { width:36px;height:36px;border:1px solid #cbd3d7;border-radius:4px;background:#fff;color:#18211d;font-size:22px;cursor:pointer; }
+    .scene-tools button:hover { background:#e1e9ed; }
+    .scene-tools label { display:flex;align-items:center;gap:5px;font-size:12px;color:#34434a;background:#ffffffed;padding:9px 7px;border-radius:4px;white-space:nowrap; }
+    .scene-tools input { accent-color:#285b7a;width:16px;height:16px;min-height:0;margin:0;padding:0;flex:none; }
+    .scene-tools select { width:108px;min-height:36px;height:36px;padding:0 5px;font-size:12px;border-radius:4px;background:#fff; }
+    #sceneFallbackImage { width:100%;height:100%;object-fit:contain; }
+    #sceneFallbackImage[hidden], .scene-tools[hidden] { display:none; }
+    #sceneDimensions { font-size:12px;font-weight:650;color:#285b7a;margin-bottom:7px; }
+    #sceneModelNote { font-size:11px;color:#67747c;margin-top:7px; }
     .scene-fallback {
       position: absolute;
       inset: 0;
@@ -128,15 +141,16 @@
       bottom: 20px;
       max-width: min(620px, calc(100% - 44px));
       color: #13201a;
+      pointer-events: none;
       text-shadow: 0 1px 0 rgba(255,255,255,.45);
     }
     .scene-overlay h1 {
       margin: 0 0 8px;
-      font-size: clamp(30px, 4vw, 54px);
+      font-size: 26px;
       line-height: 1.02;
       letter-spacing: 0;
     }
-    .scene-overlay p { margin: 0; color: #34443d; max-width: 560px; }
+    .scene-overlay p { margin: 0; color: #34443d; max-width: 560px; font-size:12px;line-height:1.5; }
     .section {
       padding: 18px;
       border-bottom: 1px solid var(--line);
@@ -534,11 +548,11 @@
       .layout { display: block; }
       aside { max-height: none; border-right: 0; border-bottom: 1px solid var(--line); }
       main { display: block; }
-      .scene-wrap { height: 420px; }
+      .scene-wrap { height: 490px; }
       .metric-grid { grid-template-columns: 1fr 1fr; }
       .field-grid, .detail-grid, .option-grid, .drawing-grid { grid-template-columns: 1fr; }
       .annotated-diagram { grid-template-columns: 1fr; }
-      .scene-overlay h1 { font-size: 34px; }
+      .scene-overlay h1 { font-size: 24px; }
       dialog { width: calc(100vw - 24px); }
       .modal-body { padding: 14px; max-height: calc(100dvh - 112px); }
       #costBreakdownTable, #costBreakdownTable tbody, #costBreakdownTable tr,
@@ -736,10 +750,20 @@
     <main>
       <section class="scene-wrap">
         <canvas id="scene"></canvas>
-        <canvas id="fallbackScene" class="scene-fallback"></canvas>
+        <img id="sceneFallbackImage" src="/images/greenhouse-material-guide.png" alt="온실 골조와 피복 구조 참고 이미지" hidden>
+        <div class="scene-tools" role="group" aria-label="3D 보기 설정">
+          <select id="sceneView" aria-label="모델 보기 범위"><option value="detail">구조 상세</option><option value="full">전체 배치</option></select>
+          <button type="button" id="sceneHome" title="전체 보기" aria-label="전체 보기">⤢</button>
+          <button type="button" id="sceneZoomIn" title="확대" aria-label="확대">+</button>
+          <button type="button" id="sceneZoomOut" title="축소" aria-label="축소">−</button>
+          <label><input type="checkbox" id="sceneCover" checked>피복</label>
+          <label><input type="checkbox" id="sceneRotate">자동 회전</label>
+        </div>
         <div class="scene-overlay">
+          <div id="sceneDimensions"></div>
           <h1 id="sceneTitle">단동형 7m x 97m</h1>
           <p id="sceneText">입력 조건에 맞춰 표준 규격과 공사비 기준을 실시간으로 매칭합니다.</p>
+          <div id="sceneModelNote"></div>
         </div>
       </section>
       <section class="metric-grid">
@@ -894,7 +918,7 @@
   </dialog>
 
   <script type="module">
-    import * as THREE from 'https://unpkg.com/three@0.165.0/build/three.module.js';
+    import { createGreenhouseScene } from './greenhouse-scene.js';
 
     const data = window.GREENHOUSE_MASTER || [];
     const glossary = window.COMPONENT_GLOSSARY || [];
@@ -1660,118 +1684,35 @@
     });
     document.querySelector('#printDetail').addEventListener('click', downloadDetailPdf);
 
-    let scene, camera, renderer, group, fallback = false;
+    let greenhouseScene;
     function initScene() {
-      const canvas = document.querySelector('#scene');
       try {
-        scene = new THREE.Scene();
-        camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-        camera.position.set(18, 14, 24);
-        camera.lookAt(0, 2, 0);
-        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-        scene.add(new THREE.HemisphereLight(0xffffff, 0x7a8b72, 2.2));
-        const sun = new THREE.DirectionalLight(0xffffff, 2.4);
-        sun.position.set(14, 22, 10);
-        scene.add(sun);
-        const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 60), new THREE.MeshStandardMaterial({ color: 0xb7c5a4, roughness: .9 }));
-        ground.rotation.x = -Math.PI / 2;
-        ground.position.y = -0.02;
-        scene.add(ground);
-        group = new THREE.Group();
-        scene.add(group);
-        window.addEventListener('resize', resizeScene);
-        resizeScene();
-      } catch (err) {
-        fallback = true;
-        canvas.style.display = 'none';
-        document.querySelector('#fallbackScene').style.display = 'block';
+        greenhouseScene = createGreenhouseScene(document.querySelector('#scene'));
+      } catch (error) {
+        document.querySelector('#scene').style.display = 'none';
+        const image = document.querySelector('#sceneFallbackImage');
+        image.hidden = false;
+        document.querySelector('.scene-tools').hidden = true;
+        document.querySelector('#sceneModelNote').textContent = '3D를 표시할 수 없어 구조 참고 이미지를 표시합니다.';
       }
-    }
-    function resizeScene() {
-      if (fallback || !renderer) return;
-      const wrap = document.querySelector('.scene-wrap');
-      const w = wrap.clientWidth, h = wrap.clientHeight;
-      renderer.setSize(w, h, false);
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-    }
-    function archPoints(width, height, side) {
-      const pts = [];
-      const half = width / 2;
-      pts.push(new THREE.Vector3(-half, 0, 0), new THREE.Vector3(-half, side, 0));
-      for (let i=0; i<=24; i++) {
-        const t = Math.PI - (Math.PI * i / 24);
-        pts.push(new THREE.Vector3(Math.cos(t) * half, side + Math.sin(t) * (height-side), 0));
-      }
-      pts.push(new THREE.Vector3(half, 0, 0));
-      return pts;
     }
     function updateScene(q) {
-      if (fallback || !renderer) return drawFallback(q);
-      group.clear();
-      const width = Math.min(n(els.width.value), 18);
-      const length = Math.min(n(els.length.value) / 7, 18);
-      const side = Math.min(n(els.side.value), 4);
-      const spans = Math.max(1, Math.min(n(els.span.value), 6));
-      const height = estimatedRidge(q.selected, side, width);
-      const frameMat = new THREE.LineBasicMaterial({ color: 0x2b4d42, linewidth: 2 });
-      const coverMat = new THREE.MeshPhysicalMaterial({ color: 0xddeee9, transparent: true, opacity: .38, roughness: .18, metalness: 0, side: THREE.DoubleSide });
-      const floorMat = new THREE.MeshStandardMaterial({ color: 0x8ca77d, roughness: .9 });
-      for (let s=0; s<spans; s++) {
-        const xoff = (s - (spans-1)/2) * width * .82;
-        const shape = new THREE.Shape();
-        const pts2 = archPoints(width, height, side).map(p => [p.x + xoff, p.y]);
-        shape.moveTo(pts2[0][0], pts2[0][1]);
-        pts2.slice(1).forEach(p => shape.lineTo(p[0], p[1]));
-        const geom = new THREE.ExtrudeGeometry(shape, { depth: length, bevelEnabled: false, steps: 1 });
-        geom.translate(0, 0, -length/2);
-        group.add(new THREE.Mesh(geom, coverMat));
-      }
-      const zLines = 7;
-      for (let zi=0; zi<zLines; zi++) {
-        const z = -length/2 + length * zi/(zLines-1);
-        for (let s=0; s<spans; s++) {
-          const xoff = (s - (spans-1)/2) * width * .82;
-          const curve = new THREE.BufferGeometry().setFromPoints(archPoints(width, height, side).map(p => new THREE.Vector3(p.x+xoff, p.y, z)));
-          group.add(new THREE.Line(curve, frameMat));
-        }
-      }
-      for (let s=0; s<spans; s++) {
-        const xoff = (s - (spans-1)/2) * width * .82;
-        for (const x of [-width/2, 0, width/2]) {
-          const geom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x+xoff, side+.2, -length/2), new THREE.Vector3(x+xoff, side+.2, length/2)]);
-          group.add(new THREE.Line(geom, frameMat));
-        }
-      }
-      const base = new THREE.Mesh(new THREE.BoxGeometry(width*spans*.86, .08, length), floorMat);
-      base.position.y = .02;
-      group.add(base);
-      group.rotation.y += 0.002;
-      renderer.render(scene, camera);
-    }
-    function animate() {
-      if (!fallback && renderer && group) {
-        group.rotation.y += 0.0016;
-        renderer.render(scene, camera);
-      }
-      requestAnimationFrame(animate);
-    }
-    function drawFallback(q) {
-      const canvas = document.querySelector('#fallbackScene');
-      const wrap = document.querySelector('.scene-wrap');
-      canvas.width = wrap.clientWidth * 2; canvas.height = wrap.clientHeight * 2;
-      const ctx = canvas.getContext('2d'); ctx.scale(2,2);
-      ctx.clearRect(0,0,wrap.clientWidth,wrap.clientHeight);
-      ctx.strokeStyle = '#254c3c'; ctx.lineWidth = 2;
-      const w = Math.min(wrap.clientWidth*.6, 520), h = 150, x = wrap.clientWidth*.2, y = wrap.clientHeight*.48;
-      for (let i=0;i<6;i++){ const dx=i*28; ctx.beginPath(); ctx.moveTo(x+dx,y+h); ctx.quadraticCurveTo(x+w/2+dx,y-h,x+w+dx,y+h); ctx.stroke(); }
+      if (!greenhouseScene) return;
+      greenhouseScene.update({
+        width: n(els.width.value), length: n(els.length.value),
+        side: n(els.side.value),
+        height: Math.max(n(els.side.value) + 0.8, estimatedRidge(q.selected, n(els.side.value), n(els.width.value))),
+        spans: n(els.span.value), type: facilityType,
+        spacing: parseSpacingM(q.selected.rafter_spec),
+        autoVent: document.querySelector('#reqAutoVent').checked,
+        curtain: document.querySelector('#reqCurtain').checked,
+        screen: document.querySelector('#reqScreen').checked
+      });
     }
     renderGlossary();
     initScene();
     updateUI();
     updateWizard();
-    animate();
   </script>
 </body>
 </html>
